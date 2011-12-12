@@ -6,7 +6,7 @@ class Camera
 {
 public:
 	
-	Camera(double ** cTrack, int scale);
+	Camera(double ** cTrack);
 	void strafe(double, double);
 	void zoom(double zoomSpeed);
 	void rotate(double rotate);

@@ -12,7 +12,7 @@ double theta, phi, radius;
 double ** camTrack;
 
 
-Camera::Camera(double ** cTrack, int scale)
+Camera::Camera(double ** cTrack)
 {
 	camTrack = cTrack;
 	theta = -PI*3/4;

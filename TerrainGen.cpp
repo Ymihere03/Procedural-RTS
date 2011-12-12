@@ -105,9 +105,8 @@ TerrainGen::TerrainGen(void)
 		}
 	}
 
-	int choice = 0;//getRandomAsI(4);
-	log("Terrain type "+itos(choice)+" was picked.\n");
-	switch(choice)
+	
+	switch(0)//getRandomAsI(4))
 	{
 		//Fields with sparse trees
 	case 0:	pField = 75, pForest = 25, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)
@@ -115,6 +114,7 @@ TerrainGen::TerrainGen(void)
 		waterHeight = 10;
 		snowHeight = 0;
 		featurePoints = 100;
+		log("Terrain type 0 was picked.\n");
 		break;
 
 		//Mountainous with lots of trees
@@ -123,6 +123,7 @@ TerrainGen::TerrainGen(void)
 		waterHeight = 20;
 		snowHeight = 30;
 		featurePoints = 40;
+		log("Terrain type 1 was picked.\n");
 		break;
 
 		//Flat deserts with some brush
@@ -131,6 +132,7 @@ TerrainGen::TerrainGen(void)
 		waterHeight = 0;
 		snowHeight = 0;	
 		featurePoints = 100;
+		log("Terrain type 2 was picked.\n");
 		break;
 
 		//Average mix of fields and trees with extra water
@@ -139,10 +141,11 @@ TerrainGen::TerrainGen(void)
 		waterHeight = 35;		//Height for water to be generated
 		snowHeight = 0;		//Height for snow to be generated
 		featurePoints = 40;
+		log("Terrain type 3 was picked.\n");
 		break;
 	}
 	sandHeight = waterHeight + 3;
-	log("choice :"+itos(choice)+" persistence: "+dtos(persistence)+"\n");
+	log("persistence: "+dtos(persistence)+"\n");
 
 
 	//Initialize the terrain with a few random points and initial height values

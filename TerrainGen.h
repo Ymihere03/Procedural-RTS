@@ -7,9 +7,6 @@ class TerrainGen
 {
 public:
 	
-
-	
-
 	nodePath ** nodes;
 
 	TerrainGen(void);

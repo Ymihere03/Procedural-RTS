@@ -1,7 +1,6 @@
 #include "ActorManager.h"
 
 
-TerrainGen * world;
 int nextID = 0, listSize = 0;
 
 struct ActorList
@@ -13,11 +12,10 @@ struct ActorList
 
 ActorList *root;
 
-ActorManager::ActorManager(){}
-
-ActorManager::ActorManager(TerrainGen &w)
+ActorManager::ActorManager()
 {
-	world = &w;
+	//world = w;
+	world = new TerrainGen();
 
 	for(int i = 0; i < 5; i++)
 	{

@@ -43,23 +43,26 @@ void Bullet::update(int timeElapsed, double height)
 void Bullet::draw()
 {
 	glColor3f(1,1,1);
-	glPointSize(5);
+	glPointSize(4);
 	glBegin(GL_POINTS);
 		glVertex3f(location.x, location.y, location.z);
 	glEnd();
 	glLoadIdentity();
 }
 
+//Kills the bullet on next update
 void Bullet::kill()
 {
 	dead = true;
 }
 
+//Checks to see if the bullet is dead
 bool Bullet::isDead()
 {
 	return dead;
 }
 
+//Updates the lifespan counter
 void Bullet::setLifeTime(double l)
 {
 	lifeTime = l;

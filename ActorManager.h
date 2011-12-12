@@ -4,14 +4,16 @@
 #include "TerrainGen.h"
 #include "Tank.h"
 #include "Bullet.h"
+#include "Camera.h"
 
 class ActorManager
 {
 public:
+	TerrainGen * world;
 	
 
 	ActorManager();
-	ActorManager(TerrainGen &w);
+	ActorManager(TerrainGen *w);
 	void addObject();
 	void removeObject(int index);
 	void updateObjects(int timeElapsed);
@@ -26,6 +28,7 @@ public:
 	~ActorManager(void);
 
 private:
+
 	int getNextID();
 
 	//Linked List functions
