@@ -20,7 +20,6 @@ OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet)
 
 	for(int i = 0; i < 256; i++)
 		keys[i] = false;
-	//ZeroMemory (&keys, sizeof (bool));									// Zero keys Structure
 }
 
 
