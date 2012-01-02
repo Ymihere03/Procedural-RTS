@@ -31,10 +31,10 @@ public:
 	virtual void addNodePath(nodePath &nextNode)
 	{return;}
 
-	virtual void addNodePath(Vector3 &nextNode)
-	{return;}
+	//virtual void addNodePath(Vector3 &nextNode)
+	//{return;}
 
-	virtual Vector2 * getNodePath(int index)
+	virtual nodePath * getPathRoot()
 	{return NULL;}
 
 	virtual void resetNodePath()

@@ -10,9 +10,7 @@ class ActorManager
 {
 public:
 	TerrainGen * world;
-	
 
-	ActorManager();
 	ActorManager(TerrainGen *w);
 	void addObject();
 	void removeObject(int index);
@@ -23,12 +21,15 @@ public:
 	Actor * getActorByID(int id);
 	void shoot(int id);
 
+	//double ** getWorldCamTrack();
+	//double getWorldTerrainHeight(int x, int z);
+	//double getSpecificTerrainHeight(double x, double z);
+	//int getWorldTerrainType(int x, int z);
+	//nodePath ** getWorldNodePath();
 	
-
 	~ActorManager(void);
 
 private:
-
 	int getNextID();
 
 	//Linked List functions

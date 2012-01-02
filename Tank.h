@@ -8,7 +8,7 @@ public:
 	Tank(double x, double y, double z, double xSize, double ySize, double zSize);
 
 	void update(int timeElapsed, double height);
-	void setMoveTarget(Vector3 &v);
+	void setMoveTarget(Vector2 &v);
 	void turn(int direction);
 	bool isReadyToShoot();
 	
@@ -17,9 +17,9 @@ public:
 	bool isDead();
 	void kill();
 	
-	void addNodePath(Vector3 &nextNode);
+	//void addNodePath(Vector3 &nextNode);
 	void addNodePath(nodePath &nextNode);
-	Vector2 * getNodePath(int index);
+	nodePath * getPathRoot();
 	void resetNodePath();
 	
 	void init(string path);
@@ -27,10 +27,9 @@ public:
 
 private:
 	
-
 	GLMmodel *model;
 	int direction, reloadTime, cooldown;
-	nodePath *root;
+	nodePath *pathRoot;
 	
 
 	void setHitBox();

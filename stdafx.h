@@ -44,7 +44,7 @@ typedef struct{
 
 struct nodePath {
 	Vector2 nodeData;
-	int incentive;
+	double incentive;
 	nodePath *next;
 };
 
@@ -54,6 +54,7 @@ string dtos(double number);
 string itos(int number);
 double getRandomAsD(int randBound);
 int getRandomAsI(int randBound);
+double findDistance(double startX, double startZ, double endX, double endZ);
 double cosineInterpolate(double height1, double height2, double x);
 Vector3 crossProduct(Vector3 v1, Vector3 v2);
 double dotProduct(Vector3 v1, Vector3 v2);

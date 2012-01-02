@@ -1,7 +1,7 @@
 #include "ActorManager.h"
 
 
-int nextID = 0, listSize = 0;
+int nextID = 0;
 
 struct ActorList
 {
@@ -12,10 +12,9 @@ struct ActorList
 
 ActorList *root;
 
-ActorManager::ActorManager()
+ActorManager::ActorManager(TerrainGen * w)
 {
-	//world = w;
-	world = new TerrainGen();
+	world = w;
 
 	for(int i = 0; i < 5; i++)
 	{
@@ -31,7 +30,7 @@ bool ActorManager::checkHitBoxes(int &id, Vector3 &ray1, Vector3 &ray2)
 {
 	ActorList * target = root;
 
-	for(int i = 0; i < listSize; i++)
+	while(target != NULL)
 	{
 		if(target->actor->checkHitBox(ray1, ray2))
 		{
@@ -108,112 +107,134 @@ void ActorManager::setMovePath(int selectedID, Vector3 &targetLocation)
 	world->resetNodes();
 
 	Actor * target = getActorByID(selectedID);
-	int currentIncentive = 0, updateCount = 0;
+	int updateCount = 0;
+	int i = targetLocation.x/32, j = targetLocation.z/32;						//Index holders for world->nodes
 	bool done = false;
 
 	//Remove any move paths from the target actor
+	//if(target->getPathRoot())
 	target->resetNodePath();
 
 	//Inital pass through the node list
 	//Find all nodes closest to the final destination
-	for(int z = 0; z < MAX_WORLD_SIZE/32; z++)
-		for(int x = 0; x < MAX_WORLD_SIZE/32; x++)
-		{
-			if(world->nodes[x][z].incentive != -2)
-				if(abs(world->nodes[x][z].nodeData.x - targetLocation.x) < 32 && abs(world->nodes[x][z].nodeData.y - targetLocation.z) < 32)
-					world->nodes[x][z].incentive = currentIncentive;
-		}
-	currentIncentive++;
+	//And set them to zero
+	if(world->nodes[i][j].incentive != -2)
+		world->nodes[i][j].incentive = findDistance(i, j, targetLocation.x/32, targetLocation.z/32);
+
+	if(world->nodes[i+1][j].incentive != -2)
+		world->nodes[i+1][j].incentive = findDistance(i+1, j, targetLocation.x/32, targetLocation.z/32);
+
+	if(world->nodes[i][j+1].incentive != -2)
+		world->nodes[i][j+1].incentive = findDistance(i, j+1, targetLocation.x/32, targetLocation.z/32);
+
+	if(world->nodes[i+1][j+1].incentive != -2)
+		world->nodes[i+1][j+1].incentive = findDistance(i+1, j+1, targetLocation.x/32, targetLocation.z/32);
+
+	//currentIncentive++;
 
 	//Add the incentive values for the rest of the grid
 	while(!done)
 	{
 		updateCount = 0;
+		double newIncentive;
 		//Pass through all nodes in the grid
 		for(int z = 0; z < MAX_WORLD_SIZE/32; z++)
 			for(int x = 0; x < MAX_WORLD_SIZE/32; x++)
 			{
 				//Make sure the node we are checking hasn't been used yet
-				if(world->nodes[x][z].incentive == -1)
+				//if(world->nodes[x][z].incentive == -1)
 					//Check all nodes around the current node
 					for(int a = -1; a <= 1; a++)
 						for(int b = -1; b <= 1; b++)
 						{
 							//Make sure the nearby node we are checking is valid
-							if((0 <= x+a && x+a < MAX_WORLD_SIZE/32) && (0 <= z+b && z+b < MAX_WORLD_SIZE/32))
-							if(world->nodes[x+a][z+b].incentive != -2 && a != 0 && b != 0)
+							if((0 <= x+a && x+a < MAX_WORLD_SIZE/32) && (0 <= z+b && z+b < MAX_WORLD_SIZE/32) && (a != 0 || b != 0))
 							{
 								//Is this node next to a node we updated on the last passthrough?
-								if(world->nodes[x+a][z+b].incentive == currentIncentive-1)
+								if(world->nodes[x+a][z+b].incentive >= 0)
 								{
+									newIncentive = world->nodes[x+a][z+b].incentive+findDistance(x, z, x+a, z+b);
+									if(world->nodes[x][z].incentive == -1 || world->nodes[x][z].incentive > newIncentive)
+									{
+										world->nodes[x][z].incentive = newIncentive;
+									
 									//Updating current node and immediately exiting the closest for loop
-									world->nodes[x][z].incentive = currentIncentive;
-									updateCount++;
-									a = 2;
-									b = 2;
+									//world->nodes[x][z].incentive = world->nodes[x+a][z+b].incentive+findDistance(x, z, x+a, z+b);
+										updateCount++;
+									}
 								}
 							}
 						}
 			}
 		if(updateCount == 0)
 			done = true;
-		currentIncentive++;
+		//currentIncentive++;
 	}
 	
 
 	//All of the nodes have now been identified based on their distance from the end destination
 	//Now we want to trace these nodes from the object's start location to the end
-	/*done = false;
-	nodePath *next = (nodePath *) malloc(sizeof(nodePath));
-	currentIncentive = 99999;
-	for(int z = 0; z < MAX_WORLD_SIZE/32; z++)
-		for(int x = 0; x < MAX_WORLD_SIZE/32; x++)
-		{
-			//Is the node we are checking is valid?
-			if(world->nodes[x][z].incentive != -2)
-				//Is the node we are checking next to the object's location??
-				if(abs(world->nodes[x][z].nodeData.x - target->getLocation().x) < 32 && abs(world->nodes[x][z].nodeData.y - target->getLocation().z) < 32)
-					//Find the correct direction for the move path
-					if(world->nodes[x][z].incentive < currentIncentive)
-					{
-						*next = world->nodes[x][z];
-						currentIncentive = world->nodes[x][z].incentive;
-					}
-		}
+	done = false;
+	nodePath smallest, current;							//Smallest found node and the current node being looked at
+	i = target->getLocation().x/32;
+	j = target->getLocation().z/32;						//Index holders for world->nodes
+	
+	//Find the inital node closest to the object
+	smallest = world->nodes[i][j];
+	current = world->nodes[i+1][j];
 
-	target->addNodePath(*next);
-	currentIncentive--;
+	if(current.incentive < smallest.incentive)
+		smallest = current;
 
-	//Trace the rest of the path from the first correct path node
+	current = world->nodes[i][j+1];
+	if(current.incentive < smallest.incentive)
+		smallest = current;
+
+	current = world->nodes[i+1][j+1];
+	if(current.incentive < smallest.incentive)
+		smallest = current;
+
+	//target->addNodePath(smallest);
+	
+
+	//currentIncentive = smallest.incentive-1;
+
 	while(!done)
 	{
-		//Check all nodes around the current node
+		//Position of the node that is being searched around
+		int xPos = smallest.nodeData.x/32;
+		int yPos = smallest.nodeData.y/32;
+
+		double smallestIncentive = 99999;
+
+		//Search all the nodes adjacent to the index node
 		for(int a = -1; a <= 1; a++)
 			for(int b = -1; b <= 1; b++)
 			{
-				//Make sure the nearby node we are checking is valid
-				if((0 <= next->nodeData.x+a && next->nodeData.x+a < MAX_WORLD_SIZE/32) && (0 <= next->nodeData.y+b && next->nodeData.y+b < MAX_WORLD_SIZE/32))
-				if(a != 0 && b != 0)
+				//Make sure the nearby nodes being checked are within a valid range
+				if((0 <= xPos+a && xPos+a < MAX_WORLD_SIZE/32) && (0 <= yPos+b && yPos+b < MAX_WORLD_SIZE/32) && (a != 0 || b != 0))
 				{
-					//Is this node a possible node to consider?
-					if(world->nodes[(int)next->nodeData.x+a][(int)next->nodeData.y+b].incentive == currentIncentive)
+					//Does the node have the incentive value we are looking for?
+					//This means that the node is a possible node for the movement path
+					if(world->nodes[xPos+a][yPos+b].incentive < smallestIncentive && world->nodes[xPos+a][yPos+b].incentive > 0)
 					{
-						//Updating current node and immediately exiting the closest for loop
-						*next = world->nodes[(int)next->nodeData.x+a][(int)next->nodeData.y+b];
-
-						target->addNodePath(*next);
-						a = 2;
-						b = 2;
+						smallestIncentive = world->nodes[xPos+a][yPos+b].incentive;
+						smallest = world->nodes[xPos+a][yPos+b];
+						//target->addNodePath(smallest);
 					}
 				}
 			}
-		currentIncentive--;
-		if(currentIncentive == -1)
-			done = true;
+			target->addNodePath(smallest);
+			//currentIncentive--;
+			log("PATH NODE SAVED: "+dtos(smallestIncentive)+"\n");
+			if(smallest.incentive < 1.45)
+				done = true;
 	}
-
-	target->addNodePath(targetLocation);		//Final Destination
-	*/
+	
+	nodePath last;
+	setCoord(last.nodeData, targetLocation.x, targetLocation.z);
+	target->addNodePath(last);		//Final Destination*/
+	
 }
 
 void ActorManager::shoot(int id)
@@ -238,11 +259,33 @@ int ActorManager::getNextID()
 	return nextID++;
 }
 
+//Get Terrain Data functions
+/*double ** ActorManager::getWorldCamTrack()
+{
+	return world->getCamTrack();
+}
+
+double ActorManager::getWorldTerrainHeight(int x, int z)
+{
+	return *world->getTerrainHeight(x, z);
+}
+
+double ActorManager::getSpecificTerrainHeight(double x, double z)
+{
+	return world->getSpecificTerrainHeight(x,z);
+}
+
+int ActorManager::getWorldTerrainType(int x, int z)
+{
+	return world->getTerrainType(x, z);
+}*/
+
+
 
 //Linked List Functions-------------------
 void ActorManager::addToList(Actor * actor)
 {
-	if(listSize == 0)
+	if(!root)
 	{
 		root = (ActorList *) malloc(sizeof(ActorList));
 		root->actor = actor;
@@ -267,8 +310,6 @@ void ActorManager::addToList(Actor * actor)
 
 		//last = target;
 	}
-	
-	listSize++;
 }
 
 void ActorManager::deleteFromList(int id)
@@ -277,7 +318,6 @@ void ActorManager::deleteFromList(int id)
 	if(root->id == id)
 	{
 		root = target->next;
-		listSize--;
 		return;
 	}
 
@@ -292,7 +332,6 @@ void ActorManager::deleteFromList(int id)
 				target->next = NULL;
 				//last = target;
 			}
-			listSize--;
 			return;
 		}
 

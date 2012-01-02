@@ -7,9 +7,9 @@ class Camera
 public:
 	
 	Camera(double ** cTrack);
-	void strafe(double, double);
-	void zoom(double zoomSpeed);
-	void rotate(double rotate);
+	void strafe(int forwardDirection, int sideDirection, int timeElapsed);
+	void zoom(int zoomDirection, int timeElapsed);
+	void rotate(int rotateDirection, int timeElapsed);
 	void followFocus();
 	
 	void setFocus(Actor &a);

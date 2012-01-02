@@ -22,7 +22,7 @@ Tank::Tank(double x, double y, double z, double xSize, double ySize, double zSiz
 	setVector(facing, cos(radianFacing),0, sin(radianFacing));
 	normalize(facing);
 
-	root = NULL;
+	pathRoot = NULL;
 
 	char *filepath = "data/models/test.obj";
 	model = glmReadOBJ(filepath, 0);
@@ -65,16 +65,16 @@ void Tank::setHitBox()
 //				that it needs to move
 //
 
-void Tank::setMoveTarget(Vector3 &v)
+void Tank::setMoveTarget(Vector2 &v)
 {
 	//Set destination
-	setVector(destination, v.x, v.y, v.z);
+	setVector(destination, v.x, 0, v.y);
 
 	//Flag the object to want to move when updated
 	moving = true;
 }
 
-void Tank::addNodePath(Vector3 &nextNode)
+/*void Tank::addNodePath(Vector3 &nextNode)
 {
 	if(!root)
 	{
@@ -96,19 +96,20 @@ void Tank::addNodePath(Vector3 &nextNode)
 		setCoord(target->nodeData, nextNode.x, nextNode.y);
 		target->next = NULL;
 	}
-}
+}*/
 
 void Tank::addNodePath(nodePath &nextNode)
 {
-	if(!root)
+	if(!pathRoot)
 	{
-		root = (nodePath *) malloc(sizeof(nodePath));
-		root->next = NULL;
-		root = &nextNode;
+		pathRoot = (nodePath *) malloc(sizeof(nodePath));
+		pathRoot->next = NULL;
+		pathRoot->incentive = nextNode.incentive;
+		setCoord(pathRoot->nodeData, nextNode.nodeData.x, nextNode.nodeData.y);
 	}
 	else
 	{
-		nodePath * target = root;
+		nodePath * target = pathRoot;
 
 		while(target->next != NULL)
 			target = target->next;
@@ -121,23 +122,21 @@ void Tank::addNodePath(nodePath &nextNode)
 	}
 }
 
-Vector2 * Tank::getNodePath(int index)
+nodePath * Tank::getPathRoot()
 {
-	nodePath * target = root;
-
-	for(int i = 0; i < index; i++)
-	{
-		if(!target)
-			return NULL;
-		target = target->next;
-	}
-
-	return &(target->nodeData);
+	return pathRoot;
 }
 
 void Tank::resetNodePath()
 {
-	root = NULL;
+	if(pathRoot)
+	{
+		pathRoot->next = NULL;
+		pathRoot->incentive = NULL;
+		pathRoot->nodeData.x = -1;
+		pathRoot->nodeData.y = -1;
+		pathRoot = NULL;
+	}
 }
 
 //
@@ -150,6 +149,10 @@ void Tank::resetNodePath()
 
 void Tank::update(int timeElapsed, double height)
 {
+	//Check if the path list has items queued in it
+	if(pathRoot && !moving)
+		setMoveTarget(pathRoot->nodeData);
+
 	//Update the cooldown timer
 	cooldown -= timeElapsed;
 
@@ -194,9 +197,19 @@ void Tank::update(int timeElapsed, double height)
 		direction = 1;
 		//Final check after both turn and movement adjustments have been applied.
 		//If this is true then the actor has fully reached its destination.
-		if(abs(location.x - destination.x) < velocity*5 &&
-		abs(location.z - destination.z) < velocity*5)
-			moving = false;
+		if(abs(location.x - destination.x) < 7 &&
+		abs(location.z - destination.z) < 7)
+		{
+			//If there is a movement point queued up then set it as the next destination
+			if(pathRoot)
+			{
+				setMoveTarget(pathRoot->nodeData);
+				if(pathRoot->next != NULL)
+					pathRoot = pathRoot->next;
+				else
+					moving = false;
+			}
+		}
 	}
 	else if(targetRadians > 0)
 		turn(1);		//Right turn

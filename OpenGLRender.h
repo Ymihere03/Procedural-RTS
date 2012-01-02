@@ -10,13 +10,35 @@
 class OpenGLRender
 {
 public:
-	
-	//typedef struct {									// Structure For Keyboard Stuff
-	//	BOOL keyDown [256];								// Holds TRUE / FALSE For Each Key
-	//} Keys;												// Keys
-	//Keys*				keys;						// Key Structure
-
 	bool keys[256];											// Keyboard routines
+	Vector3 target;											// Location of user clicks
+	int clickWait;											//Time to wait before another click is accepted
+	int clickWaitTotal;								//Total time to wait before another click is accepted
+
+
+	//Object variables
+	Camera *cam;
+	ActorManager *manager;
+	
+	BOOL initialize (Vector2* windowSize);					// Performs All Your Initialization
+	BOOL update (DWORD milliseconds, int mouseX, int mouseY);// Perform Motion Updates
+	void perspective();
+	int drawGLScene(GLvoid);
+
+	OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet, int &sID);
+	~OpenGLRender(void);
+
+private:
+	int screenH, screenW;									//User screen width and height
+	int mouseX, mouseY;										//Mouse location
+	int * selectedID;
+
+	//Debug display variables
+	bool debug, debugP;
+	double drawX, drawY;								
+	int overlayLineCount;
+
+	
 	bool active;										// Flag sets window to be active by default
 	bool fullscreen;									// Flag sets window to be fullscreen by default
 	bool light, lp, fp;
@@ -26,38 +48,20 @@ public:
 	GLuint	*fontSet;										//Holds the OpenGL font data
 	int cursorTex;
 	GLuint terrainList;										//Terrain Display List
-
-	//Object variables
-	Camera *cam;
-	ActorManager *manager;
-	int screenH, screenW;									//User screen width and height
-	int mouseX, mouseY;										//Mouse location
-	int selectedID;			
 	
-	Vector3 target;
-
-	//Debug display variables
-	bool debug, debugP;
-	double drawX, drawY;								
-	int overlayLineCount;
-
-	BOOL initialize (Vector2* windowSize);	// Performs All Your Initialization
-	int drawGLScene(GLvoid);
+	
 	void overlayDisplay();
 	void rasterStringToOverlay(string str);
 	
 	void drawTerrainAsList();
 	void checkLighting(bool lightSwitch);
-	void perspective();
-	BOOL update (DWORD milliseconds, int mouseX, int mouseY);					// Perform Motion Updates
+	
+	
 	void toggleLighting(bool lighting);
 	void toggleDebug(bool debug);
 	
 	void loadTexture(string path, int index);
 	void loadTextures();
 	void glPrint(const char *fmt);
-
-	OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet);
-	~OpenGLRender(void);
 };
 

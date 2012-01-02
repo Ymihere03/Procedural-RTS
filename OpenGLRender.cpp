@@ -1,7 +1,7 @@
 #include "OpenGLRender.h"
 
 
-OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet)
+OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet, int &sID)
 {
 	fontSet = &fSet;
 	manager = &m;
@@ -16,7 +16,9 @@ OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet)
 	drawX=0;
 	drawY=0;								//Location to draw text on the screen
 	overlayLineCount=0;
-	selectedID = -1;
+	selectedID = &sID;
+	clickWait = 0;
+	clickWaitTotal = 300;
 
 	for(int i = 0; i < 256; i++)
 		keys[i] = false;
@@ -83,24 +85,24 @@ int OpenGLRender::drawGLScene(GLvoid)
 
 	glBindTexture( GL_TEXTURE_2D, 0);
 
-	/*if(selectedID != -1)
+	//Display the movement path that is stored by the selected object
+	if(*selectedID != -1)
 	{
-		int n = 1;
-		Vector2 *next = actorManager.getActorByID(selectedID)->getNodePath(0);
-		while(next)
+		nodePath *next = manager->getActorByID(*selectedID)->getPathRoot();
+		while(next != NULL)
 		{
 			glColor3f(1,1,0);
-				glBegin(GL_LINES);
-					glVertex3f(next->x*32, *world.getTerrainHeight((next->x)*32, (next->y)*32), next->y*32);
-					glVertex3f(next->x*32+1, *world.getTerrainHeight((next->x)*32, (next->y)*32)+3, next->y*32-1);
-				glEnd();
+			glBegin(GL_LINES);
+				glVertex3f(next->nodeData.x, *manager->world->getTerrainHeight((next->nodeData.x), (next->nodeData.y)), next->nodeData.y);
+				glVertex3f(next->nodeData.x+1, *manager->world->getTerrainHeight((next->nodeData.x), (next->nodeData.y))+3, next->nodeData.y-1);
+			glEnd();
 			
-			next = actorManager.getActorByID(selectedID)->getNodePath(n);
-			n++;
+			next = next->next;
 		}
-	}*/
+	}
 
-	for(int a = 0; a < MAX_WORLD_SIZE/32; a++)
+	//Display the grid of movement nodes with their current incentive value
+	/*for(int a = 0; a < MAX_WORLD_SIZE/32; a++)
 		for(int b = 0; b < MAX_WORLD_SIZE/32; b++)
 		{
 			glColor3f(1-(float)manager->world->nodes[a][b].incentive/15.0,0,0);
@@ -119,19 +121,22 @@ int OpenGLRender::drawGLScene(GLvoid)
 
 			if(manager->world->nodes[a][b].incentive > -1)
 			{
-				glColor3f(0,1-(float)manager->world->nodes[a][b].incentive/15.0,0);
+				glColor3f(0,0,1-(float)manager->world->nodes[a][b].incentive/15.0);
 				glTranslated(manager->world->nodes[a][b].nodeData.x, *manager->world->getTerrainHeight(a*32, b*32)+5, manager->world->nodes[a][b].nodeData.y);
 				glRasterPos2f(0,0);
-				string str = itos(manager->world->nodes[a][b].incentive);
+				string str = dtos(manager->world->nodes[a][b].incentive);
 				const char *c = str.c_str();
 				glPrint(c);
 				glLoadIdentity();
 			}
-		}
+		}*/
 
 	glLoadIdentity();
+	
+	//Display the location of the last right click on the terrain
 	if(target.x != -1)
 	{
+		glColor3f(1,1,1);
 		checkLighting(false);
 		glBegin(GL_LINES);
 			glVertex3f(target.x, target.y, target.z);
@@ -195,11 +200,11 @@ void OpenGLRender::overlayDisplay()
 				overlayLineCount = 0;
 				rasterStringToOverlay("("+itos(cam->getLookAt().x)+","+ dtos(cam->getLookAt().y)+","+ itos(cam->getLookAt().z)+")");
 				rasterStringToOverlay(itos(mouseX) + "," + itos(mouseY));
-				if(selectedID != -1)
+				if(*selectedID != -1)
 				{
 					rasterStringToOverlay("Box Data:");
-					rasterStringToOverlay("     Box Height: "+itos(manager->getActorByID(selectedID)->getLocation().y));
-					rasterStringToOverlay("     Box ID: "+itos(selectedID));
+					rasterStringToOverlay("     Box Height: "+itos(manager->getActorByID(*selectedID)->getLocation().y));
+					rasterStringToOverlay("     Box ID: "+itos(*selectedID));
 				}
 			}
 
@@ -257,22 +262,22 @@ void OpenGLRender::drawTerrainAsList()
 				if(manager->world->getTerrainType(x,z) != i)
 					continue;
 				
-				double * h1 = manager->world->getTerrainHeight(x,z);
-				double * h2 = manager->world->getTerrainHeight(x+1,z);
-				double * h3 = manager->world->getTerrainHeight(x+1,z+1);
-				double * h4 = manager->world->getTerrainHeight(x,z+1);
+				double h1 = *manager->world->getTerrainHeight(x,z);
+				double h2 = *manager->world->getTerrainHeight(x+1,z);
+				double h3 = *manager->world->getTerrainHeight(x+1,z+1);
+				double h4 = *manager->world->getTerrainHeight(x,z+1);
 
 				Vector3 n1, n2, normal1, normal2;
 
 				//Get normal vector for the first triangle
-				setVector(n1, 0, *h3-*h2, 1);
-				setVector(n2, -1, *h1-*h2, 0);
+				setVector(n1, 0, h3-h2, 1);
+				setVector(n2, -1, h1-h2, 0);
 				normal1 = crossProduct(n2, n1);
 				normalize(normal1);
 
 				//Get normal vector for the second triangle
-				setVector(n1, 1, *h3-*h4, 0);
-				setVector(n2, 0, *h1-*h4, -1);
+				setVector(n1, 1, h3-h4, 0);
+				setVector(n2, 0, h1-h4, -1);
 				normal2 = crossProduct(n1, n2);
 				normalize(normal2);
 
@@ -312,23 +317,23 @@ void OpenGLRender::drawTerrainAsList()
 				glNormal3d(normal1.x, normal1.y, normal1.z);
 				
 					//world.getColor(x, z);
-					glTexCoord2f(0.1f, 0.1f);	glVertex3f(x,	*h1,z);
+					glTexCoord2f(0.1f, 0.1f);	glVertex3f(x,	h1,z);
 
 					//world.getColor(x+1, z);
-					glTexCoord2f(.9f, 0.1f);	glVertex3f(x+1,	*h2,z);
+					glTexCoord2f(.9f, 0.1f);	glVertex3f(x+1,	h2,z);
 
 					//world.getColor(x+1, z+1);
-					glTexCoord2f(.9f, .9f);	glVertex3f(x+1, *h3,z+1);
+					glTexCoord2f(.9f, .9f);	glVertex3f(x+1, h3,z+1);
 
 					//world.getColor(x, z+1);
-					glTexCoord2f(0.1f, .9f);	glVertex3f(x,	*h4,z+1);
+					glTexCoord2f(0.1f, .9f);	glVertex3f(x,	h4,z+1);
 				glEnd();*/
 
 				/*glBegin(GL_LINES);
-					glVertex3f(x,	*h1,z);
-					glVertex3f(x+1,	*h2,z);
-					glVertex3f(x,	*h1,z);
-					glVertex3f(x,	*h4,z+1);
+					glVertex3f(x,	h1,z);
+					glVertex3f(x+1, h2,z);
+					glVertex3f(x,	h1,z);
+					glVertex3f(x,	h4,z+1);
 				glEnd();*/
 				
 				//if(world.getTerrainGradient(x,z) > .5)
@@ -336,15 +341,15 @@ void OpenGLRender::drawTerrainAsList()
 				glBegin(GL_TRIANGLES);
 					
 					glNormal3d(normal1.x, normal1.y, normal1.z);
-					glTexCoord2f(xTex, zTex);						glVertex3f(x,	*h1,z);
-					glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f(x+1, *h3,z+1);
-					glTexCoord2f(xTex + texStep, zTex);				glVertex3f(x+1,	*h2,z);
+					glTexCoord2f(xTex, zTex);						glVertex3f(x,	h1,z);
+					glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f(x+1, h3,z+1);
+					glTexCoord2f(xTex + texStep, zTex);				glVertex3f(x+1,	h2,z);
 					
 					glNormal3d(normal2.x, normal2.y, normal2.z);
 					
-					glTexCoord2f(xTex, zTex);						glVertex3f(x,	*h1,z);
-					glTexCoord2f(xTex, zTex + texStep);				glVertex3f(x,	*h4,z+1);
-					glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f(x+1, *h3,z+1);
+					glTexCoord2f(xTex, zTex);						glVertex3f(x,	h1,z);
+					glTexCoord2f(xTex, zTex + texStep);				glVertex3f(x,	h4,z+1);
+					glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f(x+1, h3,z+1);
 					
 				glEnd();
 			}
@@ -364,6 +369,10 @@ BOOL OpenGLRender::update(DWORD milliseconds, int mX, int mY)
 	mouseX = mX;
 	mouseY = mY;
 
+	clickWait -= milliseconds;
+	if(clickWait < 0)
+		clickWait = 0;
+
 	if(cam->hasFocus())
 		cam->followFocus();
 
@@ -378,22 +387,22 @@ BOOL OpenGLRender::update(DWORD milliseconds, int mX, int mY)
 
 	//Moves the camera around
 	if(keys['W'])
-		cam->strafe(3,0.0);
+		cam->strafe(1,0.0, milliseconds);
 	if(keys['S'])
-		cam->strafe(-3,0.0);
+		cam->strafe(-1,0.0, milliseconds);
 	if(keys['A'])
-		cam->strafe(0.0,3);
+		cam->strafe(0.0,1, milliseconds);
 	if(keys['D'])
-		cam->strafe(0.0,-3);
+		cam->strafe(0.0,-1, milliseconds);
 
 	//Zooms the camera in or out
 	if(keys['Q'])
-		cam->rotate(-.05);
+		cam->rotate(-1, milliseconds);
 	if(keys['E'])
-		cam->rotate(.05);
+		cam->rotate(1, milliseconds);
 
 	if(keys[VK_SPACE])
-		manager->shoot(selectedID);
+		manager->shoot(*selectedID);
 
 	//if (g_keys->keyDown[VK_F1])									// Is F1 Being Pressed?
 		//ToggleFullscreen (g_window);							// Toggle Fullscreen Mode

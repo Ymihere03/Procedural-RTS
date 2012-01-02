@@ -10,6 +10,7 @@ Actor *focusTarget;
 bool focus;
 double theta, phi, radius;
 double ** camTrack;
+double moveSpeed, zoomSpeed, rotateSpeed;
 
 
 Camera::Camera(double ** cTrack)
@@ -19,27 +20,31 @@ Camera::Camera(double ** cTrack)
 	phi = PI*7/16;
 	radius = 20;
 
+	moveSpeed = 100;
+	rotateSpeed = 2;
+	zoomSpeed = 300;
+
 	setLA(200, 0, 200);
 	setY();
 
 	updateLocation();
 }
 
-void Camera::strafe(double forwardSpeed, double sideSpeed)
+void Camera::strafe(int forwardDirection, int sideDirection, int timeElapsed)
 {
 	removeFocus();
 
 	double xMove=0, zMove=0;
 
-	if(forwardSpeed != 0)
+	if(forwardDirection != 0)
 	{
-		xMove = forwardSpeed * facing.x;
-		zMove = forwardSpeed * facing.z;
+		xMove = forwardDirection * moveSpeed * facing.x * (timeElapsed/1000.0);
+		zMove = forwardDirection * moveSpeed * facing.z * (timeElapsed/1000.0);
 	}
 	else
 	{
-		xMove = sideSpeed * facing.z;
-		zMove = sideSpeed * -facing.x;
+		xMove = sideDirection * moveSpeed * facing.z * (timeElapsed/1000.0);
+		zMove = sideDirection * moveSpeed * -facing.x * (timeElapsed/1000.0);
 	}
 	setLA(lookAt.x + xMove, 0, lookAt.z + zMove);
 	setY();
@@ -47,18 +52,18 @@ void Camera::strafe(double forwardSpeed, double sideSpeed)
 	updateLocation();
 }
 
-void Camera::zoom(double zoomSpeed)
+void Camera::zoom(int zoomDirection, int timeElapsed)
 { 
-	radius += zoomSpeed;
+	radius += zoomDirection * zoomSpeed * (timeElapsed/1000.0);
 	if(radius < 1)
 		radius = 1;
 
 	updateLocation();
 }
 
-void Camera::rotate(double rotate)
+void Camera::rotate(int rotateDirection, int timeElapsed)
 {
-	theta += rotate;
+	theta += rotateDirection * rotateSpeed * (timeElapsed/1000.0);
 	updateLocation();
 }
 
@@ -172,7 +177,6 @@ void Camera::setY()
 void Camera::adjustHeight(double newHeight)
 {
 	position.y = newHeight;
-	//lookAt.y = position.y-distanceMod.y;
 }
 
 Vector3 Camera::getPosition()

@@ -21,15 +21,14 @@ TCHAR szWindowClass[MAX_LOADSTRING];					// the main window class name
 static BOOL g_isProgramLooping;							// Window Creation Loop, For FullScreen/Windowed Toggle																		// Between Fullscreen / Windowed Mode
 static BOOL g_createFullScreen = TRUE;							// If TRUE, Then Create Fullscreen
 
-int	mouse_x, mouse_y;								// The Current Position Of The Mouse
+int	mouse_x, mouse_y;									// The Current Position Of The Mouse
 int newMouseX = -1;
-int mouseMode = 0;											// 0 = Select mode   1 = Movement mode
 int selectedID = -1;
-
-
+int timeElapsed;
 
 // OpenGL variables
 OpenGLRender *glRender;
+TerrainGen * world;
 
 HGLRC hRC=NULL;											// Permanent Rendering Context
 HDC  hDC=NULL;											// Private GDI Device Context
@@ -95,10 +94,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	application.hInstance = hInst;									// Application Instance
 
 	//Initialize world objects
-	
-	actorManager = new ActorManager();
+	world = new TerrainGen();
+	actorManager = new ActorManager(world);
 	camera = new Camera(actorManager->world->getCamTrack());
-	glRender = new OpenGLRender(*camera, *actorManager, fontSet);
+	glRender = new OpenGLRender(*camera, *actorManager, fontSet, selectedID);
 	
 
 	// Fill Out Window
@@ -172,10 +171,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 							tickCount = GetTickCount ();				// Get The Tick Count
 							if(!glRender->update (tickCount - window.lastTickCount, mouse_x, mouse_y))	// Update The Counter
 								TerminateApplication(&window);
-							int time = tickCount - window.lastTickCount;
+							timeElapsed = tickCount - window.lastTickCount;
 							window.lastTickCount = tickCount;			// Set Last Count To Current Count
 							
-							actorManager->updateObjects(time);
+							actorManager->updateObjects(timeElapsed);
 							glRender->drawGLScene();									// Draw Our Scene
 							
 							SwapBuffers (window.hDC);					// Swap Buffers (Double Buffering)
@@ -500,9 +499,9 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_MOUSEWHEEL:
 			newMouseX = wParam;
 				if(newMouseX>0)
-					camera->zoom(-5);
+					camera->zoom(-1, timeElapsed);
 				else
-					camera->zoom(5);
+					camera->zoom(1, timeElapsed);
 			break;
 
 		case WM_RBUTTONDOWN:
@@ -510,7 +509,9 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				mouse_x = LOWORD(lParam);          
 				mouse_y = HIWORD(lParam);
 				rMouseSelection();
-			
+				if(glRender->clickWait == 0)
+					glRender->clickWait = glRender->clickWaitTotal;
+
 		break;
 
 		case WM_MBUTTONDOWN:
@@ -531,7 +532,6 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			
 	            mouse_x = LOWORD(lParam);          
 				mouse_y = HIWORD(lParam);
-			
 		break;
 	}
 
@@ -617,14 +617,16 @@ void rMouseSelection()
 	//}
 
 	Vector2 start, end;
+	Vector3 target;
 	//If initial line points are reversed then the click hit will be last in the calculation
-	BOOL last = FALSE, steep = FALSE;
+	BOOL reverse = FALSE, steep = FALSE, xReverse = FALSE, yReverse = FALSE;
 	double dErr = 0, err = 0;
 	int yStep = 0, x, y;
 
 	//Set up starting points for Bresenham's
 	if(abs(clickRay2.z - clickRay1.z) > abs(clickRay2.x - clickRay1.x))
 	{
+		//Rotate around the line x = y
 		setCoord(start, clickRay1.z, clickRay1.x);
 		setCoord(end, clickRay2.z, clickRay2.x);
 		steep = TRUE;
@@ -635,18 +637,35 @@ void rMouseSelection()
 		setCoord(end, clickRay2.x, clickRay2.z);
 	}
 
+	/*if(start.x > end.x)
+	{
+		double temp;
+		temp = start.x;
+		start.x = end.x;
+		end.x = temp;
+	
+		temp = start.y;
+		start.y = end.y;
+		end.y = temp;
+		reverse = TRUE;
+	}*/
+
 	if(start.x > end.x)
 	{
 		double temp;
 		temp = start.x;
 		start.x = end.x;
 		end.x = temp;
-
+		
 		temp = start.y;
 		start.y = end.y;
 		end.y = temp;
-		last = TRUE;		//We want the last hit target found to be used for selection
+		reverse = TRUE;
 	}
+
+	//If both are true than that is the same situation as both being false
+	//if(reverseX && reverseY)			
+		//reverseX = reverseY = FALSE;
 
 	dX = end.x - start.x;
 	dZ = abs(end.y - start.y);
@@ -679,44 +698,60 @@ void rMouseSelection()
 			{
 				if(y+step < 0 || y+step > MAX_WORLD_SIZE-1)
 					continue;
-				if(!last)
-				{
+				//if(reverse)
+				//{
+				//	setVector(tp1, y, *actorManager->world->getTerrainHeight(y, x+step), x+step);
+				//	setVector(tp2, y + 1, *actorManager->world->getTerrainHeight(y+1, x+step), x+step);
+				//	setVector(tp3, y + 1, *actorManager->world->getTerrainHeight(y+1, x+step+1), x+step+1);
+				//	setVector(tp4, y, *actorManager->world->getTerrainHeight(y, x+step+1), x+step+1);
+				//}
+				//else
+				//{
 					setVector(tp1, y+step, *actorManager->world->getTerrainHeight(y+step, x), x);
 					setVector(tp2, y+step+1, *actorManager->world->getTerrainHeight(y+step+1, x), x);
 					setVector(tp3, y+step+1, *actorManager->world->getTerrainHeight(y+step+1, x+1), x+1);
 					setVector(tp4, y+step, *actorManager->world->getTerrainHeight(y+step, x+1), x+1);
-				}
-				else
-				{
-					setVector(tp1, y, *actorManager->world->getTerrainHeight(y+step, x), x+step);
-					setVector(tp2, y+1, *actorManager->world->getTerrainHeight(y+1, x+step), x+step);
-					setVector(tp3, y+1, *actorManager->world->getTerrainHeight(y+1, x+step+1), x+step+1);
-					setVector(tp4, y, *actorManager->world->getTerrainHeight(y, x+step+1), x+step+1);
-				}
+				//}
+				
+					/*glColor3f(1,1,1);
+					glBegin(GL_LINES);
+						glVertex3f(tp1.x, tp1.y, tp1.z);
+						glVertex3f(tp2.x, tp2.y, tp2.z);
+						
+						glVertex3f(tp2.x, tp2.y, tp2.z);
+						glVertex3f(tp3.x, tp3.y, tp3.z);
+
+						glVertex3f(tp3.x, tp3.y, tp3.z);
+						glVertex3f(tp4.x, tp4.y, tp4.z);
+
+						glVertex3f(tp4.x, tp4.y, tp4.z);
+						glVertex3f(tp1.x, tp1.y, tp1.z);
+					glEnd();*/
+				//}
+				//else
+				//{
+				//	setVector(tp1, y, *actorManager->world->getTerrainHeight(y+step, x), x+step);
+				//	setVector(tp2, y+1, *actorManager->world->getTerrainHeight(y+1, x+step), x+step);
+				//	setVector(tp3, y+1, *actorManager->world->getTerrainHeight(y+1, x+step+1), x+step+1);
+				//	setVector(tp4, y, *actorManager->world->getTerrainHeight(y, x+step+1), x+step+1);
+				//}
 
 
 				//Did the click ray pass through either triangle in the chunk plane?
-				if(checkLineIntersect(tp2, tp1, tp3, clickRay1, clickRay2, glRender->target) || checkLineIntersect(tp4, tp3, tp1, clickRay1, clickRay2, glRender->target))
+				if(checkLineIntersect(tp2, tp1, tp3, clickRay1, clickRay2, target) || checkLineIntersect(tp4, tp3, tp1, clickRay1, clickRay2, target))
 				{
-					if(last)
+					if(reverse)
 						continue;
 					else
 					{
 						if(selectedID != -1)
-							//actorManager.getActorByID(selectedID)->setMoveTarget(target);
-							actorManager->setMovePath(selectedID, glRender->target);
-						//testBox[selectedID]->setMoveTarget(target);
+							//actorManager->getActorByID(selectedID)->setMoveTarget(glRender->target);
+							actorManager->setMovePath(selectedID, target);
+							//actorManager->setMovePath(selectedID, glRender->target);
+						setVector(glRender->target, target.x, target.y, target.z);
 						return;		//Target found
 					}
 				}
-			}
-
-			if(last)
-			{
-				if(selectedID != -1)
-					//actorManager.getActorByID(selectedID)->setMoveTarget(target);
-					actorManager->setMovePath(selectedID, glRender->target);
-						//testBox[selectedID]->setMoveTarget(target);
 			}
 
 		}
@@ -726,42 +761,50 @@ void rMouseSelection()
 			{
 				if(x+step < 0 || x+step > MAX_WORLD_SIZE-1)
 					continue;
-				if(!last)
-				{
-					setVector(tp1, x+step, *actorManager->world->getTerrainHeight(x+step, y), y);
-					setVector(tp2, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y), y);
-					setVector(tp3, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y+1), y+1);
-					setVector(tp4, x+step, *actorManager->world->getTerrainHeight(x+step, y+1), y+1);
-				}
-				else
-				{
+				//if(!reverse)
+				//{
+				//	setVector(tp1, x+step, *actorManager->world->getTerrainHeight(x+step, y), y);
+				//	setVector(tp2, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y), y);
+				//	setVector(tp3, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y+1), y+1);
+				//	setVector(tp4, x+step, *actorManager->world->getTerrainHeight(x+step, y+1), y+1);
+				//}
+				//else
+				//{
 					setVector(tp1, x, *actorManager->world->getTerrainHeight(x, y+step), y+step);
 					setVector(tp2, x + 1, *actorManager->world->getTerrainHeight(x+1, y+step), y+step);
 					setVector(tp3, x + 1, *actorManager->world->getTerrainHeight(x+1, y+step+1), y+step+1);
 					setVector(tp4, x, *actorManager->world->getTerrainHeight(x, y+step+1), y+step+1);
-				}
 
-				if(checkLineIntersect(tp2, tp1, tp3, clickRay1, clickRay2, glRender->target) || checkLineIntersect(tp4, tp3, tp1, clickRay1, clickRay2, glRender->target))
+					/*glColor3f(1,1,1);
+					glBegin(GL_LINES);
+						glVertex3f(tp1.x, tp1.y, tp1.z);
+						glVertex3f(tp2.x, tp2.y, tp2.z);
+						
+						glVertex3f(tp2.x, tp2.y, tp2.z);
+						glVertex3f(tp3.x, tp3.y, tp3.z);
+
+						glVertex3f(tp3.x, tp3.y, tp3.z);
+						glVertex3f(tp4.x, tp4.y, tp4.z);
+
+						glVertex3f(tp4.x, tp4.y, tp4.z);
+						glVertex3f(tp1.x, tp1.y, tp1.z);
+					glEnd();*/
+				//}
+			
+				if(checkLineIntersect(tp2, tp1, tp3, clickRay1, clickRay2, target) || checkLineIntersect(tp4, tp3, tp1, clickRay1, clickRay2, target))
 				{
-					if(last)
+					if(reverse)
 						continue;
 					else
 					{
-						if(selectedID != -1)
-							//actorManager.getActorByID(selectedID)->setMoveTarget(target);
-							actorManager->setMovePath(selectedID, glRender->target);
-						//testBox[selectedID]->setMoveTarget(target);
+						if(selectedID != -1 && glRender->clickWait == 0)
+							//actorManager->getActorByID(selectedID)->setMoveTarget(glRender->target);
+							//finalTarget = &(glRender->target);
+							actorManager->setMovePath(selectedID, target);
+						setVector(glRender->target, target.x, target.y, target.z);
 						return;		//Target found
 					}
 				}
-			}
-
-			if(last)
-			{
-				if(selectedID != -1)
-					//actorManager.getActorByID(selectedID)->setMoveTarget(target);
-					actorManager->setMovePath(selectedID, glRender->target);
-						//testBox[selectedID]->setMoveTarget(target);
 			}
 		}
 
@@ -772,6 +815,11 @@ void rMouseSelection()
 			err -= 1;
 		}
 	}
+
+	setVector(glRender->target, target.x, target.y, target.z);
+
+	if(selectedID != -1 && glRender->clickWait == 0)
+		actorManager->setMovePath(selectedID, target);
 }
 
 void clearCurrentSelection()
@@ -801,7 +849,7 @@ void buildFont(GL_Window* window)
 
 	fontSet = glGenLists(96);
 
-	font = CreateFont(-16,
+	font = CreateFont(-14,
 					  0,
 					  0,
 					  0,

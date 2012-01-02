@@ -106,7 +106,7 @@ TerrainGen::TerrainGen(void)
 	}
 
 	
-	switch(0)//getRandomAsI(4))
+	switch(3)//getRandomAsI(4))
 	{
 		//Fields with sparse trees
 	case 0:	pField = 75, pForest = 25, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)

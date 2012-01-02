@@ -57,6 +57,11 @@ int getRandomAsI(int randBound)
 	return (int)(rand() % randBound);
 }
 
+double findDistance(double startX, double startZ, double endX, double endZ)
+{
+	return sqrt(pow(endX - startX,2) + pow(endZ - startZ,2));
+}
+
 double cosineInterpolate(double a, double b, double x)
 {
 	//This function takes in two number values 'a' and 'b' and a variable x
