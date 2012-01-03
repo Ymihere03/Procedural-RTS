@@ -170,6 +170,14 @@ TerrainGen::TerrainGen(void)
 	log(dtos(minHeight) +","+dtos(maxHeight)+"\n");
 }
 
+//
+//  FUNCTION: modifyTerrainHeight()
+//
+//  PURPOSE: Creates the terrain by combining all the terrain generating algorithms
+//
+//  COMMENTS: 
+//
+
 void TerrainGen::modifyTerrainHeight()
 {
 	//Initialize the Perlin Noise map data
@@ -213,15 +221,19 @@ void TerrainGen::modifyTerrainHeight()
 			//if(terrain[x][z].gradient > .7)
 				//terrain[x][z].type = 2;
 
+			//Water is below a certain height
 			if(terrain[x][z].height < minHeight+waterHeight)
 				terrain[x][z].type = 4;
 
+			//Snow is above a certain height
 			if(terrain[x][z].height > maxHeight-snowHeight)
 				terrain[x][z].type = 3;
 
+			//Sand is just above water
 			if(minHeight+waterHeight < *getTerrainHeight(x,z) && *getTerrainHeight(x,z) < minHeight+sandHeight)
 				terrain[x][z].type = 2;
 
+			//Initialize the nodes for pathfinding
 			if(x%32 == 0 && z%32 == 0)
 			{
 				setCoord(nodes[x/32][z/32].nodeData, x, z);
@@ -234,14 +246,19 @@ void TerrainGen::modifyTerrainHeight()
 		}
 }
 
+//
+//  FUNCTION: generateTerrain()
+//
+//  PURPOSE: Uses the Diamond-Square algorithm to generate the base terrain type structure
+//
+//  COMMENTS: This randomizes the placement of terrain types like forests, plains
+//
+
 void TerrainGen::generateTerrain(int dX, int dZ)
 {
 	for(int z = 0; z < MAX_WORLD_SIZE; z += dZ)
 		for(int x = 0; x < MAX_WORLD_SIZE; x += dX)
 		{
-			
-			//tile *currentParent = &terrain[x][z];
-
 			tile *child;
 			tile *parents[4];
 			//Current tile being referenced
@@ -352,12 +369,7 @@ void TerrainGen::generateTerrain(int dX, int dZ)
 				else
 					child->type = parents[3]->type;
 			}
-
-
 			pSum = 0;
-			
-
-			
 		}
 
 	int newDX = 0, newDZ = 0;
@@ -371,6 +383,14 @@ void TerrainGen::generateTerrain(int dX, int dZ)
 
 	generateTerrain(newDX, newDZ);
 }
+
+//
+//  FUNCTION: perturbance()
+//
+//  PURPOSE: Terrain modifying algorithm that skews the terrain formations with perlin noise
+//
+//  COMMENTS: 
+//
 
 void TerrainGen::perturbance(int variation)
 {
@@ -411,6 +431,15 @@ void TerrainGen::perturbance(int variation)
 	}
 }
 
+//
+//  FUNCTION: terrainTypeDistribution()
+//
+//  PURPOSE: Picks a random number based on the types of terrain used in the generator and the 
+//				probability for each type to appear
+//
+//  COMMENTS: 
+//
+
 int TerrainGen::terrainTypeDistribution()
 {
 	//Chooses a random terrain type based on the given probability distributions
@@ -426,6 +455,14 @@ int TerrainGen::terrainTypeDistribution()
 	return 2;	//Desert
 }
 
+//
+//  FUNCTION: combineHeightMapWithTerrain()
+//
+//  PURPOSE: Combines a height map onto the current terrain
+//
+//  COMMENTS: 
+//
+
 void TerrainGen::combineHeightMapWithTerrain(HeightMap *hMap)
 {
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
@@ -434,6 +471,15 @@ void TerrainGen::combineHeightMapWithTerrain(HeightMap *hMap)
 			terrain[x][z].height += *hMap->getMap(x, z);
 		}
 }
+
+//
+//  FUNCTION: thermalErosion()
+//
+//  PURPOSE: Uses thermal erosion algorithms to modify the terrain
+//
+//  COMMENTS: Moves terrain around based on nearby slopes
+//				Currently not a complete algorithm
+//
 
 void TerrainGen::thermalErosion()
 {
@@ -460,6 +506,14 @@ void TerrainGen::thermalErosion()
 		}
 }
 
+//
+//  FUNCTION: makeCamTrack()
+//
+//  PURPOSE: Sets the height values for the camera so it floats above the terrain
+//
+//  COMMENTS: 
+//
+
 void TerrainGen::makeCamTrack()
 {
 	for(int z = 0; z < 5; z++)
@@ -471,6 +525,14 @@ void TerrainGen::makeCamTrack()
 				cTrack[x][z] = terrain[x*256][z*256].height + 10;
 		}
 }
+
+//
+//  FUNCTION: smooth()
+//
+//  PURPOSE: Smooths the terrain height values by averaging the height of a tile with it's neighbor tiles
+//
+//  COMMENTS: 
+//
 
 void TerrainGen::smooth(int x, int z, int spread)
 {
@@ -510,6 +572,14 @@ void TerrainGen::findSlope(int x, int z)
 
 }
 
+//
+//  FUNCTION: resetNodes()
+//
+//  PURPOSE: Clears the node path overlay of all values and returns them to their default values
+//
+//  COMMENTS: 
+//
+
 void TerrainGen::resetNodes()
 {
 	for(int z = 0; z < MAX_WORLD_SIZE/32; z++)
@@ -519,6 +589,14 @@ void TerrainGen::resetNodes()
 				nodes[x][z].incentive = -1;
 		}
 }
+
+//
+//  FUNCTION: setTerrainData()
+//
+//  PURPOSE: Saves stat values of the terrain after the generation is complete
+//
+//  COMMENTS: 
+//
 
 void TerrainGen::setTerrainData(int x, int z)
 {
@@ -568,6 +646,14 @@ double TerrainGen::getTerrainGradient(int x, int z)
 {
 	return terrain[x][z].gradient;
 }
+
+//
+//  FUNCTION: getSpecificTerainHeight()
+//
+//  PURPOSE: Returns the height of the terrain between the tile data points by checking for the interestion of the plane
+//
+//  COMMENTS: 
+//
 
 double TerrainGen::getSpecificTerrainHeight(double x, double z)
 {

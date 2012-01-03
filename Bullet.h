@@ -14,12 +14,9 @@ public:
 	bool isDead();
 	void kill();
 	
-	
 	~Bullet(void);
 
 private:
-	double gravity, downwardVelocity;
-
-	void setLifeTime(double lifeTime);
+	double downwardVelocity;
 };
 

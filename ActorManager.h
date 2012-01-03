@@ -4,6 +4,7 @@
 #include "TerrainGen.h"
 #include "Tank.h"
 #include "Bullet.h"
+#include "GroundExplosion.h"
 #include "Camera.h"
 
 class ActorManager

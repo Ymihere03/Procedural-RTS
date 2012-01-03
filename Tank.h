@@ -33,6 +33,5 @@ private:
 	
 
 	void setHitBox();
-	void setLifeTime(double lifeTime);
 };
 

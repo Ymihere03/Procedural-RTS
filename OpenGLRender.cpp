@@ -499,11 +499,7 @@ void OpenGLRender::loadTexture(string path, int index)
 	);
 
 	if(testTex[index])
-	{
 		log("Texture "+path+" loaded successfully\n");
-			//  bind an OpenGL texture ID
-		//glBindTexture( GL_TEXTURE_2D, testTex[index]);
-	}
 }
 
 void OpenGLRender::loadTextures()
@@ -514,6 +510,7 @@ void OpenGLRender::loadTextures()
 	loadTexture("data/images/snow_texture.jpg", 3);
 	loadTexture("data/images/water.jpg", 4);
 	loadTexture("data/images/cursor2.png", 5);
+	loadTexture("data/images/dirt_splash1.bmp", 6);
 	cursorTex = 5;
 }
 

@@ -44,7 +44,7 @@ private:
 	bool light, lp, fp;
 
 	//Texture Variables
-	GLuint testTex[6];										//Array for holding OpenGL textures
+	GLuint testTex[7];										//Array for holding OpenGL textures
 	GLuint	*fontSet;										//Holds the OpenGL font data
 	int cursorTex;
 	GLuint terrainList;										//Terrain Display List

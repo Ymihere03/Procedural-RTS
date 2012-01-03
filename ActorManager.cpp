@@ -59,12 +59,20 @@ void ActorManager::updateObjects(int timeElapsed)
 		setVector(p2, target->actor->getLocation().x, target->actor->getLocation().y, target->actor->getLocation().z);
 
 		if(target->actor->type == "Bullet")
+		{
 			if(checkHitBoxes(id, p1, p2))
 			{
 				getActorByID(id)->kill();
 				target->actor->kill();
 			}
+			if(target->actor->isDead())
+			{
+				Actor *e = new GroundExplosion(target->actor->getLocation(), target->actor->getFacing());
+				addToList(e);
+			}
+		}
 
+		//Check if the actor is dead
 		if(target->actor->isDead())
 			deleteFromList(target->id);
 		
@@ -130,7 +138,6 @@ void ActorManager::setMovePath(int selectedID, Vector3 &targetLocation)
 	if(world->nodes[i+1][j+1].incentive != -2)
 		world->nodes[i+1][j+1].incentive = findDistance(i+1, j+1, targetLocation.x/32, targetLocation.z/32);
 
-	//currentIncentive++;
 
 	//Add the incentive values for the rest of the grid
 	while(!done)
@@ -168,7 +175,6 @@ void ActorManager::setMovePath(int selectedID, Vector3 &targetLocation)
 			}
 		if(updateCount == 0)
 			done = true;
-		//currentIncentive++;
 	}
 	
 
@@ -194,10 +200,6 @@ void ActorManager::setMovePath(int selectedID, Vector3 &targetLocation)
 	if(current.incentive < smallest.incentive)
 		smallest = current;
 
-	//target->addNodePath(smallest);
-	
-
-	//currentIncentive = smallest.incentive-1;
 
 	while(!done)
 	{
@@ -220,13 +222,10 @@ void ActorManager::setMovePath(int selectedID, Vector3 &targetLocation)
 					{
 						smallestIncentive = world->nodes[xPos+a][yPos+b].incentive;
 						smallest = world->nodes[xPos+a][yPos+b];
-						//target->addNodePath(smallest);
 					}
 				}
 			}
 			target->addNodePath(smallest);
-			//currentIncentive--;
-			log("PATH NODE SAVED: "+dtos(smallestIncentive)+"\n");
 			if(smallest.incentive < 1.45)
 				done = true;
 	}

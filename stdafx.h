@@ -33,6 +33,9 @@ using namespace std;
 
 #define MAX_WORLD_SIZE 1025		//Max bounds for the world size
 #define PI 3.1415927
+#define GRAVITY -.98
+
+
 
 typedef struct{
 	double x, y, z;

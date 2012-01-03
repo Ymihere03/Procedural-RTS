@@ -31,9 +31,6 @@ public:
 	virtual void addNodePath(nodePath &nextNode)
 	{return;}
 
-	//virtual void addNodePath(Vector3 &nextNode)
-	//{return;}
-
 	virtual nodePath * getPathRoot()
 	{return NULL;}
 
@@ -61,7 +58,7 @@ protected:
 	Vector3 location, destination, hitBox[8], hitBoxSize, facing;
 	double velocity, turnSpeed, radianFacing;
 	bool selected, moving, dead;
-	double lifeTime;
+	int lifeTime, totalLifeTime;
 	
 	//int id;
 	
@@ -70,7 +67,7 @@ protected:
 	void setLocation(Vector3 &v);
 	
 
-	virtual void setLifeTime(double lifeTime)=0;
+	virtual void checkLifeTime(int time);
 	virtual void setHitBox()
 	{return;}
 };

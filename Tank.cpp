@@ -14,6 +14,8 @@ Tank::Tank(double x, double y, double z, double xSize, double ySize, double zSiz
 	direction = 1;		//Moving forward
 	reloadTime = 300;	//Time to ready the gun to fire
 	cooldown = 0;		//Current wait time to shoot
+	lifeTime = 0;		//Time the object has been alive
+	totalLifeTime = -1;
 	setVector(hitBoxSize, xSize,ySize,zSize);
 	
 	setLocation(x, y, z);
@@ -149,6 +151,8 @@ void Tank::resetNodePath()
 
 void Tank::update(int timeElapsed, double height)
 {
+	
+
 	//Check if the path list has items queued in it
 	if(pathRoot && !moving)
 		setMoveTarget(pathRoot->nodeData);
@@ -220,6 +224,8 @@ void Tank::update(int timeElapsed, double height)
 	if(moving)
 		setLocation(location.x + cos(radianFacing)*velocity*direction,
 				height, location.z + (sin(radianFacing))*velocity*direction);
+
+	checkLifeTime(timeElapsed);
 }
 
 //
@@ -398,12 +404,6 @@ void Tank::kill()
 bool Tank::isDead()
 {
 	return dead;
-}
-
-//Add to how long the object has been alive
-void Tank::setLifeTime(double l)
-{
-	lifeTime = l;
 }
 
 Tank::~Tank(void)

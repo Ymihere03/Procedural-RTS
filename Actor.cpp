@@ -69,6 +69,13 @@ double Actor::getFacingRads()
 	return radianFacing;
 }
 
+void Actor::checkLifeTime(int time)
+{
+	lifeTime += time;
+	if(lifeTime > totalLifeTime && totalLifeTime > 0)
+		kill();
+}
+
 
 void Actor::init(string path)
 {
