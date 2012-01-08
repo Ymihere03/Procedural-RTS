@@ -2,23 +2,13 @@
 
 int dX, dZ;			//Delta numbers used to denote the current generation resolution
 const int seed = time(NULL);
-double pField, pForest, pDesert;		//Probabilities of each terrain type being generated (Must sum to 100)
-double persistence;
-int waterHeight;		//Height above the lowest terrain point for water to be generated
-int snowHeight;		//Height below the highest terrain point snow to be generated
-int sandHeight;		//Height for shoreline to be generated
-int featurePoints;	//Detail parameter for the Voronoi Graph, a higher number creates larger and taller mountain structures
-double minHeight, maxHeight;
-
-struct tile {
-	int type;			//Type of terrain
-	double height;		//Height at location
-	float gradient;		//Slope
-};
 
 
-double ** cTrack;		//Height values for the camera track
-tile ** terrain;		//Data storage for terrain
+
+
+
+
+
 
 
 //
@@ -87,17 +77,18 @@ TerrainGen::TerrainGen(void)
 		}
 	}
 
+	nodeSpread = 32;
 	//Allocate memory for the node path list
-	nodes = (nodePath **) malloc (MAX_WORLD_SIZE/32 * sizeof(nodePath *));
+	nodes = (nodePath **) malloc (MAX_WORLD_SIZE/nodeSpread * sizeof(nodePath *));
 	if(!cTrack)
 	{
 		log("Memory allocation error while making camera Track\n");
 		exit(1);
 	}
 
-	for(int k = 0; k <= MAX_WORLD_SIZE/32; k++)
+	for(int k = 0; k <= MAX_WORLD_SIZE/nodeSpread; k++)
 	{
-		nodes[k] = (nodePath *) malloc (MAX_WORLD_SIZE/32 * sizeof(nodePath));
+		nodes[k] = (nodePath *) malloc (MAX_WORLD_SIZE/nodeSpread * sizeof(nodePath));
 		if(!nodes[k])
 		{
 			log("Memory allocation error while making camera Track\n");
@@ -106,11 +97,12 @@ TerrainGen::TerrainGen(void)
 	}
 
 	
-	switch(3)//getRandomAsI(4))
+	switch(1)//getRandomAsI(4))
 	{
 		//Fields with sparse trees
 	case 0:	pField = 75, pForest = 25, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)
 		persistence = .38 + getRandomAsD(7)/100;
+		avgHeight = 20+getRandomAsD(50);
 		waterHeight = 10;
 		snowHeight = 0;
 		featurePoints = 100;
@@ -119,16 +111,18 @@ TerrainGen::TerrainGen(void)
 
 		//Mountainous with lots of trees
 	case 1: pField = 50, pForest = 50, pDesert = 0;
-		persistence = .5 + getRandomAsD(5)/100;
-		waterHeight = 20;
+		persistence = .3 + getRandomAsD(5)/100;
+		avgHeight = 100+getRandomAsD(100);
+		waterHeight = 10;
 		snowHeight = 30;
-		featurePoints = 40;
+		featurePoints = 30;
 		log("Terrain type 1 was picked.\n");
 		break;
 
 		//Flat deserts with some brush
 	case 2: pField = 25, pForest = 0, pDesert = 75;
 		persistence = .30 + getRandomAsD(5)/100;
+		avgHeight = 20+getRandomAsD(20);
 		waterHeight = 0;
 		snowHeight = 0;	
 		featurePoints = 100;
@@ -138,6 +132,7 @@ TerrainGen::TerrainGen(void)
 		//Average mix of fields and trees with extra water
 	case 3: pField = 60, pForest = 40, pDesert = 0;
 		persistence = .45 + getRandomAsD(10)/100;
+		avgHeight = getRandomAsD(20);
 		waterHeight = 35;		//Height for water to be generated
 		snowHeight = 0;		//Height for snow to be generated
 		featurePoints = 40;
@@ -181,19 +176,19 @@ TerrainGen::TerrainGen(void)
 void TerrainGen::modifyTerrainHeight()
 {
 	//Initialize the Perlin Noise map data
-	PerlinNoise pMap = PerlinNoise(persistence);
-	for(int octave = 1; octave < 8; octave++)
+	HeightMap * pMap = new PerlinNoise(persistence, avgHeight);
+	for(int i = 0; i <= 6; i++)
 	{
-		pMap.create(octave);
-		combineHeightMapWithTerrain(&pMap);
+		pMap->create();
+		combineHeightMapWithTerrain(pMap);
 	}
 
 	//Initialize the Voronoi Graph map data
-	if(persistence >= .4)
+	/*if(persistence >= .4)
 	{
-		VoronoiGraph vMap = VoronoiGraph(featurePoints);
-		combineHeightMapWithTerrain(&vMap);
-	}
+		HeightMap * vMap = new VoronoiGraph(featurePoints);
+		combineHeightMapWithTerrain(vMap);
+	}*/
 	//perturbance(8);
 	
 	//Smooth the terrain heights
@@ -234,13 +229,13 @@ void TerrainGen::modifyTerrainHeight()
 				terrain[x][z].type = 2;
 
 			//Initialize the nodes for pathfinding
-			if(x%32 == 0 && z%32 == 0)
+			if(x%nodeSpread == 0 && z%nodeSpread == 0)
 			{
-				setCoord(nodes[x/32][z/32].nodeData, x, z);
+				setCoord(nodes[x/nodeSpread][z/nodeSpread].nodeData, x, z);
 				if(terrain[x][z].gradient < .7 && terrain[x][z].type != 4)
-					nodes[x/32][z/32].incentive = -1;
+					nodes[x/nodeSpread][z/nodeSpread].incentive = -1;
 				else
-					nodes[x/32][z/32].incentive = -2;
+					nodes[x/nodeSpread][z/nodeSpread].incentive = -2;
 				
 			}
 		}
@@ -516,13 +511,13 @@ void TerrainGen::thermalErosion()
 
 void TerrainGen::makeCamTrack()
 {
-	for(int z = 0; z < 5; z++)
-		for(int x = 0; x < 5; x++)
+	for(int z = 0; z <= 4; z++)
+		for(int x = 0; x <= 4; x++)
 		{
-			if(getTerrainType(x*256, z*256) == 4)
+			if(getTerrainType(x*(MAX_WORLD_SIZE-1)/4, z*(MAX_WORLD_SIZE-1)/4) == 4)
 				cTrack[x][z] = waterHeight+25;
 			else
-				cTrack[x][z] = terrain[x*256][z*256].height + 10;
+				cTrack[x][z] = terrain[x*(MAX_WORLD_SIZE-1)/4][z*(MAX_WORLD_SIZE-1)/4].height + 10;
 		}
 }
 
@@ -582,8 +577,8 @@ void TerrainGen::findSlope(int x, int z)
 
 void TerrainGen::resetNodes()
 {
-	for(int z = 0; z < MAX_WORLD_SIZE/32; z++)
-		for(int x = 0; x < MAX_WORLD_SIZE/32; x++)
+	for(int z = 0; z < MAX_WORLD_SIZE/nodeSpread; z++)
+		for(int x = 0; x < MAX_WORLD_SIZE/nodeSpread; x++)
 		{
 			if(nodes[x][z].incentive != -2)
 				nodes[x][z].incentive = -1;

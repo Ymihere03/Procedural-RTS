@@ -27,11 +27,11 @@ using namespace std;
 #include <gl\GL.h>
 #include <gl\GLU.h>
 #include <gl\glut.h>
-#include "Simple OpenGL Image Library\src\SOIL.h"
 
 
 
-#define MAX_WORLD_SIZE 1025		//Max bounds for the world size
+
+#define MAX_WORLD_SIZE 257		//Max bounds for the world size
 #define PI 3.1415927
 #define GRAVITY -.98
 

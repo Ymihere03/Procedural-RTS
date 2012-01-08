@@ -3,7 +3,7 @@
 
 
 //double ** height;
-double * persistence;
+
 FILE * pFile;
 
 //
@@ -13,12 +13,12 @@ FILE * pFile;
 //
 //  COMMENTS:
 //
-PerlinNoise::PerlinNoise(double &p)
+PerlinNoise::PerlinNoise(double p, int aH)
 {
-	persistence = &p;
+	octave = 1;
+	persistence = p;
+	avgHeight = aH;
 	init();
-
-
 }
 
 //
@@ -33,11 +33,11 @@ PerlinNoise::PerlinNoise(double &p)
 //		yield more data points with a small range of possible values.
 //		
 //
-void PerlinNoise::create(int octave)
+void PerlinNoise::create()
 {
-	int frequency = (int)pow(2.0, octave+1);				//Number of points being used on each axis direction
+	int frequency = (int)pow(2.0, octave);				//Number of points being used on each axis direction
 	int delta = MAX_WORLD_SIZE/frequency;					//Distance between the points being used
-	double amplitude = 200*pow(*persistence, octave);		//Range of values the points can take on from +amplitude to -amplitude
+	double amplitude = (MAX_WORLD_SIZE-1)*pow(persistence, octave);		//Range of values the points can take on from +amplitude to -amplitude
 	double add;
 
 	for(int z = 0; z < MAX_WORLD_SIZE; z += delta)
@@ -51,13 +51,14 @@ void PerlinNoise::create(int octave)
 				add = -add + amplitude/2;
 			else
 				add += amplitude/2;
-			if(getRandomAsI(100) < 5 && octave < 3)
+			if(getRandomAsI(100) < 5 && octave < 4)
 				add *= 2;
-			*getMap(x,z) = add/2;
+			*getMap(x,z) = (add/2);
 		}
-	
+
 	//After random points are generated, interpolate the map to fill in all the spaces
 	interpolateMap(delta);
+	octave++;
 }
 
 //

@@ -5,14 +5,14 @@ GroundExplosion::GroundExplosion(Vector3 &position, Vector3 &f)
 	type = "Emitter";
 	dead = false;
 	nextID = 0;
-	velocity = 40;
+	velocity = 30;
 	lifeTime = 0;
-	totalLifeTime = 1500;
+	totalLifeTime = 1000;
 	root = NULL;
 
 	setVector(location, position.x, position.y, position.z);
 	setVector(facing, f.x, f.y, f.z);
-	for(int i = 0; i < 50; i++)
+	for(int i = 0; i < 80; i++)
 		addQuad();
 }
 
@@ -29,7 +29,8 @@ void GroundExplosion::update(int timeElapsed, double height)
 			deleteQuad(target->id);
 
 		setVector(target->quadLocation, target->quadLocation.x + target->quadFacing.x*target->velocity*newTime,
-			target->quadLocation.y+target->quadFacing.y*(target->velocity+target->downwardVelocity)*newTime, target->quadLocation.z + target->quadFacing.z*target->velocity*newTime);
+			target->quadLocation.y+target->quadFacing.y*(target->velocity+target->downwardVelocity)*newTime, 
+			target->quadLocation.z + target->quadFacing.z*target->velocity*newTime);
 
 		target->downwardVelocity += GRAVITY;
 
@@ -47,12 +48,22 @@ void GroundExplosion::draw()
 
 	while(target != NULL)
 	{
-		glColor3f(.7,.4,.2);
-		//glRotatef(getRandomAsI(360), 0, 1, 0);
-		glPointSize(5);
+		glColor3f(.5,.15,.05);
+		glPointSize(6);
 		glBegin(GL_POINTS);
 			glVertex3f(target->quadLocation.x, target->quadLocation.y, target->quadLocation.z);
 		glEnd();
+
+		/*glColor3f(1,1,1);
+		glBegin(GL_TRIANGLES);
+			glTexCoord2f(0,0);	glVertex3f(location.x-(1-facing.x), location.y, location.z-(1-facing.z));
+			glTexCoord2f(1,0);	glVertex3f(location.x+(1-facing.x), location.y, location.z+(1-facing.z));
+			glTexCoord2f(.5,1);	glVertex3f(target->quadLocation.x, target->quadLocation.y, target->quadLocation.z);
+
+			glTexCoord2f(1,0);	glVertex3f(location.x+(1-facing.x), location.y, location.z+(1-facing.z));
+			glTexCoord2f(0,0);	glVertex3f(location.x-(1-facing.x), location.y, location.z-(1-facing.z));
+			glTexCoord2f(.5,1);	glVertex3f(target->quadLocation.x, target->quadLocation.y, target->quadLocation.z);
+		glEnd();*/
 		
 		target = target->next;
 	}
@@ -83,13 +94,15 @@ void GroundExplosion::genQuad(quadList *q)
 	setVector(q->quadLocation, location.x+xStart, location.y, location.z+zStart);
 	q->id = nextID;
 
-	setVector(q->quadFacing, (getRandomAsD(40)-20)/100+facing.x/2, (getRandomAsD(75)+25)/100, (getRandomAsD(40)-20)/100+facing.z/2);
-	normalize(q->quadFacing);
+	
 	q->lifeSpan = 0;
 	q->id = nextID;
 	q->downwardVelocity = 0;
 	q->velocity = getRandomAsI(velocity);
-	q->totalLife = getRandomAsI(1500);
+	q->totalLife = getRandomAsI(totalLifeTime);
+
+	setVector(q->quadFacing, (getRandomAsD(100)-50)/100+facing.x, -facing.y+getRandomAsD(40)/100, (getRandomAsD(100)-50)/100+facing.z);
+	normalize(q->quadFacing);
 
 	nextID++;
 	q->next = NULL;

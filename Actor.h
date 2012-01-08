@@ -47,6 +47,7 @@ public:
 	//int getID();
 	double getTargetRads();
 	double getFacingRads();
+	double getVelocity();
 
 	void init(string path);
 	~Actor(void);

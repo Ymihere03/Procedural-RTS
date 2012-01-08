@@ -6,8 +6,25 @@
 class TerrainGen
 {
 public:
-	
+	struct tile {
+		int type;			//Type of terrain
+		double height;		//Height at location
+		float gradient;		//Slope
+	};
+
+	double pField, pForest, pDesert;		//Probabilities of each terrain type being generated (Must sum to 100)
+	double persistence;
+	int avgHeight;
+	int waterHeight;		//Height above the lowest terrain point for water to be generated
+	int snowHeight;		//Height below the highest terrain point snow to be generated
+	int sandHeight;		//Height for shoreline to be generated
+	int featurePoints;	//Detail parameter for the Voronoi Graph, a higher number creates larger and taller mountain structures
+	double minHeight, maxHeight;
+
+	double ** cTrack;		//Height values for the camera track
+	tile ** terrain;		//Data storage for terrain
 	nodePath ** nodes;
+	int nodeSpread;
 
 	TerrainGen(void);
 	

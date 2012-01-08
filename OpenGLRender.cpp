@@ -1,10 +1,11 @@
 #include "OpenGLRender.h"
 
 
-OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet, int &sID)
+OpenGLRender::OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GLuint &fSet, int &sID)
 {
 	fontSet = &fSet;
-	manager = &m;
+	aM = &a;
+	tM = &t;
 	active=TRUE;										// Flag sets window to be active by default
 	fullscreen=TRUE;									// Flag sets window to be fullscreen by default
 	light = true;
@@ -16,6 +17,7 @@ OpenGLRender::OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet, int &sID)
 	drawX=0;
 	drawY=0;								//Location to draw text on the screen
 	overlayLineCount=0;
+	fpsUpdate = 0;
 	selectedID = &sID;
 	clickWait = 0;
 	clickWaitTotal = 300;
@@ -30,22 +32,22 @@ BOOL OpenGLRender::initialize(Vector2* windowSize)
 	screenH = windowSize->y;
 	screenW = windowSize->x;
 
-	glShadeModel(GL_SMOOTH);
+	//glShadeModel(GL_SMOOTH);
 	glClearColor(0.3f,0.3f,0.7f,0.0f);
 	glClearDepth(1.0f);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);	
+	//glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);	
 	glEnable(GL_COLOR_MATERIAL);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glEnable(GL_TEXTURE_2D);
-	glDepthFunc(GL_LEQUAL);
+	//glDepthFunc(GL_LEQUAL);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glFrontFace(GL_CCW);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	
 	
-	GLfloat LightAmbient[]= { .6,.5, .5, 1.0f };
+	GLfloat LightAmbient[]= { .3,.3, .3, 1.0f };
 	GLfloat LightDiffuse[]= { 1.0f, 1, 1, 1.0f };
 	GLfloat LightSpecular[]= { 1.0f, 1, 1, 1.0f };
 	GLfloat LightPosition[]= { -1.0f,1.0f, 0.0f, 0.0f };
@@ -60,7 +62,7 @@ BOOL OpenGLRender::initialize(Vector2* windowSize)
 	perspective();
 
 	loadTextures();
-	drawTerrainAsList();
+	//drawTerrainAsList();
 
 
 	return TRUE;
@@ -75,12 +77,22 @@ BOOL OpenGLRender::initialize(Vector2* windowSize)
 //  COMMENTS:
 //
 
-int OpenGLRender::drawGLScene(GLvoid)
+int OpenGLRender::drawGLScene()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
     glLoadIdentity();
+
+	if(light)
+		glEnable(GL_LIGHTING);
+	else
+		glDisable(GL_LIGHTING);
+
+	checkLighting(true);
+	//tM->drawTerrain();
+	fastDrawTerrain();
+	//drawTerrain();
 	//glScalef(worldScale, 1.0, worldScale);
-	glCallList(terrainList);		//Draw Terrain List
+	//glCallList(terrainList);		//Draw Terrain List
 	//glScalef(-worldScale, -1.0, -worldScale);
 
 	glBindTexture( GL_TEXTURE_2D, 0);
@@ -88,13 +100,13 @@ int OpenGLRender::drawGLScene(GLvoid)
 	//Display the movement path that is stored by the selected object
 	if(*selectedID != -1)
 	{
-		nodePath *next = manager->getActorByID(*selectedID)->getPathRoot();
+		nodePath *next = aM->getActorByID(*selectedID)->getPathRoot();
 		while(next != NULL)
 		{
 			glColor3f(1,1,0);
 			glBegin(GL_LINES);
-				glVertex3f(next->nodeData.x, *manager->world->getTerrainHeight((next->nodeData.x), (next->nodeData.y)), next->nodeData.y);
-				glVertex3f(next->nodeData.x+1, *manager->world->getTerrainHeight((next->nodeData.x), (next->nodeData.y))+3, next->nodeData.y-1);
+				glVertex3f(next->nodeData.x, tM->getHeight((next->nodeData.x), (next->nodeData.y)), next->nodeData.y);
+				glVertex3f(next->nodeData.x+1, tM->getHeight((next->nodeData.x), (next->nodeData.y))+3, next->nodeData.y-1);
 			glEnd();
 			
 			next = next->next;
@@ -161,7 +173,7 @@ int OpenGLRender::drawGLScene(GLvoid)
 	//---DEBUG DISPLAY
 
 	checkLighting(true);
-	manager->drawObjects();
+	aM->drawObjects();
 	overlayDisplay();
 	
 	//------
@@ -203,9 +215,10 @@ void OpenGLRender::overlayDisplay()
 				if(*selectedID != -1)
 				{
 					rasterStringToOverlay("Box Data:");
-					rasterStringToOverlay("     Box Height: "+itos(manager->getActorByID(*selectedID)->getLocation().y));
+					rasterStringToOverlay("     Box Height: "+itos(aM->getActorByID(*selectedID)->getLocation().y));
 					rasterStringToOverlay("     Box ID: "+itos(*selectedID));
 				}
+				rasterStringToOverlay("FPS: " + dtos(1000.0/time));
 			}
 
 			//Draw the cursor
@@ -241,13 +254,87 @@ void OpenGLRender::rasterStringToOverlay(string str)
 	overlayLineCount++;
 }
 
-
-
-
-void OpenGLRender::drawTerrainAsList()
+void OpenGLRender::fastDrawTerrain()
 {
-	terrainList = glGenLists(1);
-	glNewList(terrainList, GL_COMPILE);
+	int i = 0;
+	bool restart = true;
+	//int z = 0;
+	for(int z = 0; z < MAX_WORLD_SIZE-1; z++)
+	{
+		restart = true;
+		glBegin(GL_TRIANGLE_STRIP);
+		for(int x = 0; x < MAX_WORLD_SIZE-1; x++)
+		{
+			double h1 = tM->getHeight(x,z);
+			double h2 = tM->getHeight(x+1,z);
+			double h3 = tM->getHeight(x+1,z+1);
+			double h4 = tM->getHeight(x,z+1);
+
+			Vector3 n1, n2, normal1, normal2;
+			if(tM->getType(x,z) != i)
+			{
+				glEnd();
+
+				i = tM->getType(x,z);
+				glBindTexture( GL_TEXTURE_2D, testTex[i]);
+				restart = true;
+				glBegin(GL_TRIANGLE_STRIP);
+			}
+
+			//Get normal vector for the first triangle
+			setVector(n1, 0, h3-h2, 1);
+			setVector(n2, -1, h1-h2, 0);
+			normal1 = crossProduct(n2, n1);
+			normalize(normal1);
+
+			//Get normal vector for the second triangle
+			setVector(n1, 1, h3-h4, 0);
+			setVector(n2, 0, h1-h4, -1);
+			normal2 = crossProduct(n1, n2);
+			normalize(normal2);
+
+			float xTex = .1, zTex = .1, texStep;
+			int texSize = 128;
+
+			texStep = 1.0/texSize;
+
+			xTex = (float)(x % texSize)/texSize;
+			zTex = (float)(z % texSize)/texSize;
+			if(x%texSize == 0 || z%texSize == 0)
+				restart = true;
+
+			//glBegin(GL_TRIANGLE_STRIP);
+			if(restart)
+			{
+				glNormal3d(normal1.x, normal1.y, normal1.z);
+				glTexCoord2f(xTex, zTex);						glVertex3f(x,	h1,z);
+				glTexCoord2f(xTex, zTex + texStep);				glVertex3f(x,	h4,(z+1));
+				glTexCoord2f(xTex + texStep, zTex);				glVertex3f((x+1),	h2,z);
+					
+				glNormal3d(normal2.x, normal2.y, normal2.z);
+					
+				glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f((x+1), h3,(z+1));
+				restart = false;
+			}
+			else
+			{
+				glNormal3d(normal1.x, normal1.y, normal1.z);
+				glTexCoord2f(xTex + texStep, zTex);				glVertex3f((x+1),	h2,z);
+
+				glNormal3d(normal2.x, normal2.y, normal2.z);
+				glTexCoord2f(xTex + texStep, zTex + texStep);	glVertex3f((x+1), h3,(z+1));
+			}
+			//glEnd();
+		}
+		glEnd();
+	}
+}
+
+
+void OpenGLRender::drawTerrain()
+{
+	//terrainList = glGenLists(1);
+	//glNewList(terrainList, GL_COMPILE);
 
 	//Find all the tiles that use the first texture and then loop to the next texture
 	for(int i = 0; i < 5; i++)
@@ -259,13 +346,13 @@ void OpenGLRender::drawTerrainAsList()
 			for(int x = 0; x < MAX_WORLD_SIZE-1; x++)
 			{
 				//Is the current tile using the loaded texture?
-				if(manager->world->getTerrainType(x,z) != i)
+				if(tM->getType(x,z) != i)
 					continue;
 				
-				double h1 = *manager->world->getTerrainHeight(x,z);
-				double h2 = *manager->world->getTerrainHeight(x+1,z);
-				double h3 = *manager->world->getTerrainHeight(x+1,z+1);
-				double h4 = *manager->world->getTerrainHeight(x,z+1);
+				double h1 = tM->getHeight(x,z);
+				double h2 = tM->getHeight(x+1,z);
+				double h3 = tM->getHeight(x+1,z+1);
+				double h4 = tM->getHeight(x,z+1);
 
 				Vector3 n1, n2, normal1, normal2;
 
@@ -281,12 +368,12 @@ void OpenGLRender::drawTerrainAsList()
 				normal2 = crossProduct(n1, n2);
 				normalize(normal2);
 
-				float xTex = .1, zTex = .1, texStep = .8;
+				float xTex = .1, zTex = .1, texStep;
 
 				texStep = 1/8.0;
 
-				xTex = (float)(x % 8)/8.1;
-				zTex = (float)(z % 8)/8.1;
+				xTex = (float)(x % 8)/8.3;
+				zTex = (float)(z % 8)/8.3;
 				
 				/*Vector3 color;
 				switch(world.getTerrainObject(x, z))
@@ -354,7 +441,7 @@ void OpenGLRender::drawTerrainAsList()
 				glEnd();
 			}
 	}
-	glEndList();
+	//glEndList();
 
 	glBindTexture( GL_TEXTURE_2D, 0);
 }
@@ -369,6 +456,13 @@ BOOL OpenGLRender::update(DWORD milliseconds, int mX, int mY)
 	mouseX = mX;
 	mouseY = mY;
 
+	if(fpsUpdate > 250)
+	{
+		time = milliseconds;
+		fpsUpdate -= 250;
+	}
+	fpsUpdate += milliseconds;
+	
 	clickWait -= milliseconds;
 	if(clickWait < 0)
 		clickWait = 0;
@@ -402,7 +496,7 @@ BOOL OpenGLRender::update(DWORD milliseconds, int mX, int mY)
 		cam->rotate(1, milliseconds);
 
 	if(keys[VK_SPACE])
-		manager->shoot(*selectedID);
+		aM->shoot(*selectedID);
 
 	//if (g_keys->keyDown[VK_F1])									// Is F1 Being Pressed?
 		//ToggleFullscreen (g_window);							// Toggle Fullscreen Mode
@@ -445,8 +539,8 @@ void OpenGLRender::perspective()
 	gluPerspective(45.0f, (GLfloat)screenW/(GLfloat)screenH,2.0f,1000.0f);
 
 	double adjust = 0;
-	if(cam->getPosition().y < *manager->world->getTerrainHeight(cam->getPosition().x, cam->getPosition().z)+5)
-		cam->adjustHeight(*manager->world->getTerrainHeight(cam->getPosition().x, cam->getPosition().z)+5);
+	if(cam->getPosition().y < tM->getHeight(cam->getPosition().x, cam->getPosition().z)+5)
+		cam->adjustHeight(tM->getHeight(cam->getPosition().x, cam->getPosition().z)+5);
 
 	gluLookAt(cam->getPosition().x,cam->getPosition().y,cam->getPosition().z,  
 			  cam->getLookAt().x,cam->getLookAt().y,cam->getLookAt().z,  0,1,0);

@@ -1,0 +1,10 @@
+Terrain type 1 was picked.
+persistence: 0.34
+-6.27744e+066,62.4084
+Texture data/images/grass.jpg loaded successfully
+Texture data/images/sand_texture.jpg loaded successfully
+Texture data/images/forest.jpg loaded successfully
+Texture data/images/snow_texture.jpg loaded successfully
+Texture data/images/water.jpg loaded successfully
+Texture data/images/cursor2.png loaded successfully
+Texture data/images/dirt_splash1.bmp loaded successfully

@@ -6,6 +6,8 @@
 #include "stdafx.h"
 #include "Camera.h"
 #include "ActorManager.h"
+#include "TerrainManager.h"
+#include "Simple OpenGL Image Library\src\SOIL.h"
 
 class OpenGLRender
 {
@@ -18,14 +20,15 @@ public:
 
 	//Object variables
 	Camera *cam;
-	ActorManager *manager;
+	ActorManager *aM;
+	TerrainManager *tM;
 	
 	BOOL initialize (Vector2* windowSize);					// Performs All Your Initialization
 	BOOL update (DWORD milliseconds, int mouseX, int mouseY);// Perform Motion Updates
 	void perspective();
-	int drawGLScene(GLvoid);
+	int drawGLScene();
 
-	OpenGLRender(Camera &c, ActorManager &m, GLuint &fSet, int &sID);
+	OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GLuint &fSet, int &sID);
 	~OpenGLRender(void);
 
 private:
@@ -37,6 +40,7 @@ private:
 	bool debug, debugP;
 	double drawX, drawY;								
 	int overlayLineCount;
+	int fpsUpdate, time;
 
 	
 	bool active;										// Flag sets window to be active by default
@@ -53,7 +57,8 @@ private:
 	void overlayDisplay();
 	void rasterStringToOverlay(string str);
 	
-	void drawTerrainAsList();
+	void fastDrawTerrain();
+	void drawTerrain();
 	void checkLighting(bool lightSwitch);
 	
 	

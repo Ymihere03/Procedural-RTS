@@ -4,7 +4,12 @@
 class VoronoiGraph: public HeightMap
 {
 public:
-	VoronoiGraph(int numPoints);
+	int featurePoints;
+
+	VoronoiGraph(int featurePoints);
+
+	void create();
+
 	~VoronoiGraph(void);
 };
 

@@ -4,9 +4,10 @@
 class PerlinNoise: public HeightMap
 {
 public:
+	int octave;
 
-	PerlinNoise(double &p);
-	void create(int octave);
+	PerlinNoise(double persistence, int avgHeight);
+	void create();
 	~PerlinNoise(void);
 
 private:

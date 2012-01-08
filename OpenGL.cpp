@@ -3,7 +3,6 @@
  * This class is responsible for all Open GL commands and displaying OpenGL on the screen
  */
 
-#include "stdafx.h"
 #include "OpenGL.h"
 
 
@@ -27,8 +26,6 @@ int selectedID = -1;
 int timeElapsed;
 
 // OpenGL variables
-OpenGLRender *glRender;
-TerrainGen * world;
 
 HGLRC hRC=NULL;											// Permanent Rendering Context
 HDC  hDC=NULL;											// Private GDI Device Context
@@ -94,10 +91,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	application.hInstance = hInst;									// Application Instance
 
 	//Initialize world objects
-	world = new TerrainGen();
-	actorManager = new ActorManager(world);
-	camera = new Camera(actorManager->world->getCamTrack());
-	glRender = new OpenGLRender(*camera, *actorManager, fontSet, selectedID);
+	//world = new TerrainGen();
+	terrainManager = new TerrainManager();
+	actorManager = new ActorManager(terrainManager);
+	camera = new Camera(terrainManager->world->getCamTrack());
+	glRender = new OpenGLRender(*camera, *actorManager, *terrainManager, fontSet, selectedID);
 	
 
 	// Fill Out Window
@@ -636,20 +634,7 @@ void rMouseSelection()
 		setCoord(start, clickRay1.x, clickRay1.z);
 		setCoord(end, clickRay2.x, clickRay2.z);
 	}
-
-	/*if(start.x > end.x)
-	{
-		double temp;
-		temp = start.x;
-		start.x = end.x;
-		end.x = temp;
 	
-		temp = start.y;
-		start.y = end.y;
-		end.y = temp;
-		reverse = TRUE;
-	}*/
-
 	if(start.x > end.x)
 	{
 		double temp;
@@ -707,10 +692,10 @@ void rMouseSelection()
 				//}
 				//else
 				//{
-					setVector(tp1, y+step, *actorManager->world->getTerrainHeight(y+step, x), x);
-					setVector(tp2, y+step+1, *actorManager->world->getTerrainHeight(y+step+1, x), x);
-					setVector(tp3, y+step+1, *actorManager->world->getTerrainHeight(y+step+1, x+1), x+1);
-					setVector(tp4, y+step, *actorManager->world->getTerrainHeight(y+step, x+1), x+1);
+					setVector(tp1, y+step, *terrainManager->world->getTerrainHeight(y+step, x), x);
+					setVector(tp2, y+step+1, *terrainManager->world->getTerrainHeight(y+step+1, x), x);
+					setVector(tp3, y+step+1, *terrainManager->world->getTerrainHeight(y+step+1, x+1), x+1);
+					setVector(tp4, y+step, *terrainManager->world->getTerrainHeight(y+step, x+1), x+1);
 				//}
 				
 					/*glColor3f(1,1,1);
@@ -746,7 +731,7 @@ void rMouseSelection()
 					{
 						if(selectedID != -1)
 							//actorManager->getActorByID(selectedID)->setMoveTarget(glRender->target);
-							actorManager->setMovePath(selectedID, target);
+							terrainManager->setMovePath(actorManager->getActorByID(selectedID), target);
 							//actorManager->setMovePath(selectedID, glRender->target);
 						setVector(glRender->target, target.x, target.y, target.z);
 						return;		//Target found
@@ -770,10 +755,10 @@ void rMouseSelection()
 				//}
 				//else
 				//{
-					setVector(tp1, x, *actorManager->world->getTerrainHeight(x, y+step), y+step);
-					setVector(tp2, x + 1, *actorManager->world->getTerrainHeight(x+1, y+step), y+step);
-					setVector(tp3, x + 1, *actorManager->world->getTerrainHeight(x+1, y+step+1), y+step+1);
-					setVector(tp4, x, *actorManager->world->getTerrainHeight(x, y+step+1), y+step+1);
+					setVector(tp1, x, *terrainManager->world->getTerrainHeight(x, y+step), y+step);
+					setVector(tp2, x + 1, *terrainManager->world->getTerrainHeight(x+1, y+step), y+step);
+					setVector(tp3, x + 1, *terrainManager->world->getTerrainHeight(x+1, y+step+1), y+step+1);
+					setVector(tp4, x, *terrainManager->world->getTerrainHeight(x, y+step+1), y+step+1);
 
 					/*glColor3f(1,1,1);
 					glBegin(GL_LINES);
@@ -800,7 +785,7 @@ void rMouseSelection()
 						if(selectedID != -1 && glRender->clickWait == 0)
 							//actorManager->getActorByID(selectedID)->setMoveTarget(glRender->target);
 							//finalTarget = &(glRender->target);
-							actorManager->setMovePath(selectedID, target);
+							terrainManager->setMovePath(actorManager->getActorByID(selectedID), target);
 						setVector(glRender->target, target.x, target.y, target.z);
 						return;		//Target found
 					}
@@ -819,7 +804,7 @@ void rMouseSelection()
 	setVector(glRender->target, target.x, target.y, target.z);
 
 	if(selectedID != -1 && glRender->clickWait == 0)
-		actorManager->setMovePath(selectedID, target);
+		terrainManager->setMovePath(actorManager->getActorByID(selectedID), target);
 }
 
 void clearCurrentSelection()

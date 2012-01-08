@@ -5,6 +5,7 @@
 
 #include "OpenGLRender.h"
 #include "resource.h"
+#include "TerrainManager.h"
 #include "TerrainGen.h"
 #include "Camera.h"
 #include "Actor.h"
@@ -12,6 +13,9 @@
 #include "stdafx.h"
 #include <stdarg.h>
 
+//TerrainGen *world;
+OpenGLRender *glRender;
+TerrainManager *terrainManager;
 //TerrainGen *world;
 ActorManager *actorManager;
 Camera *camera;											//Camera object that holds orientation values for camera

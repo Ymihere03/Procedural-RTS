@@ -3,13 +3,18 @@
 
 Vector3 * FPlist;
 
-VoronoiGraph::VoronoiGraph(int numPoints)
+VoronoiGraph::VoronoiGraph(int fP)
 {
+	featurePoints = fP;
 	init();		//Initialize memory for the height map
+}
 
-	FPlist = (Vector3 *) malloc ((numPoints+1) * sizeof(Vector3));
+void VoronoiGraph::create()
+{
+	
+	FPlist = (Vector3 *) malloc ((featurePoints+1) * sizeof(Vector3));
 
-	for(int i = 0; i < numPoints; i++)
+	for(int i = 0; i < featurePoints; i++)
 	{
 		int x = getRandomAsI(MAX_WORLD_SIZE-1);
 		int z = getRandomAsI(MAX_WORLD_SIZE-1);
@@ -31,7 +36,7 @@ VoronoiGraph::VoronoiGraph(int numPoints)
 			double minDist2 = pow(FPlist[1].x-x, 2.0) + pow(FPlist[1].y-z, 2.0);
 			int p = 0, p2 = 1;		//Keep track of the indicies that correspond to the minimum distance values
 
-			for(int i = 2; i < numPoints; i++)
+			for(int i = 2; i < featurePoints; i++)
 			{
 				double newDist = pow(FPlist[i].x-x, 2.0) + pow(FPlist[i].y-z, 2.0);
 
@@ -49,7 +54,7 @@ VoronoiGraph::VoronoiGraph(int numPoints)
 					minDist2 = newDist;
 				}
 			}
-			*getMap(x, z) = (minDist2-minDist)/2300;
+			*getMap(x, z) = (minDist2-minDist)/500;
 		}
 }
 

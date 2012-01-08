@@ -4,16 +4,19 @@
 Bullet::Bullet(Vector3 &position, Vector3 &direction)
 {
 	type = "Bullet";
-	downwardVelocity = (getRandomAsD(10)-5)/500.0;
-	dead = false;
-	velocity = 100;		//Units per second
-	lifeTime = 0;
-	totalLifeTime = 20000;
+
 	setVector(location, position.x+direction.x, position.y+.75, position.z+direction.z);
 
 	//Facing vector with a bit of randomness
-	setVector(facing, direction.x+(getRandomAsD(20)-10)/700.0, 1, direction.z+(getRandomAsD(20)-10)/700.0);
+	setVector(facing, direction.x+(getRandomAsD(20)-10)/700.0, direction.y, direction.z+(getRandomAsD(20)-10)/700.0);
 	normalize(facing);
+	
+	dead = false;
+	velocity = 100;		//Units per second
+	downwardVelocity = -1*(velocity-velocity*facing.y+(getRandomAsD(10)-5)/500.0);
+	lifeTime = 0;
+	totalLifeTime = 20000;
+	
 }
 
 //
@@ -29,9 +32,14 @@ void Bullet::update(int timeElapsed, double height)
 	//Convert milliseconds to seconds
 	double newTime = timeElapsed/1000.0;
 
+	Vector3 oldLocation;
+	setVector(oldLocation, location.x, location.y, location.z);
+
 	//Adjust location based on direction, velocity, and distance by time elapsed
 	setLocation(location.x + facing.x*velocity*newTime,
-		location.y+facing.y*(velocity+downwardVelocity)*newTime, location.z + facing.z*velocity*newTime);
+		location.y+(velocity+downwardVelocity)*newTime, location.z + facing.z*velocity*newTime);
+
+	facing.y = location.y-oldLocation.y;
 
 	//Factor in gravity to make a new downward velocity
 	downwardVelocity += GRAVITY;

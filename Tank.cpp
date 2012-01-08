@@ -21,7 +21,7 @@ Tank::Tank(double x, double y, double z, double xSize, double ySize, double zSiz
 	setLocation(x, y, z);
 	setVector(destination, location.x, location.y, location.z);
 	
-	setVector(facing, cos(radianFacing),0, sin(radianFacing));
+	setVector(facing, cos(radianFacing), .5, sin(radianFacing));
 	normalize(facing);
 
 	pathRoot = NULL;
@@ -75,30 +75,6 @@ void Tank::setMoveTarget(Vector2 &v)
 	//Flag the object to want to move when updated
 	moving = true;
 }
-
-/*void Tank::addNodePath(Vector3 &nextNode)
-{
-	if(!root)
-	{
-		root = (nodePath *) malloc(sizeof(nodePath));
-		root->next = NULL;
-		setCoord(root->nodeData, nextNode.x, nextNode.y);
-	}
-	else
-	{
-		nodePath * target = (nodePath *) malloc(sizeof(nodePath));
-		target = root;
-
-		while(target->next != NULL)
-			target = target->next;
-
-		target->next = (nodePath *) malloc(sizeof(nodePath));
-		target = target->next;
-
-		setCoord(target->nodeData, nextNode.x, nextNode.y);
-		target->next = NULL;
-	}
-}*/
 
 void Tank::addNodePath(nodePath &nextNode)
 {
@@ -251,7 +227,7 @@ void Tank::turn(int direction)
 		radianFacing += 2*PI;
 
 	//Convert the radian value to a vector (x,z)
-	setVector(facing, cos(radianFacing), 0, sin(radianFacing));
+	setVector(facing, cos(radianFacing), facing.y, sin(radianFacing));
 }
 
 bool Tank::isReadyToShoot()
@@ -345,7 +321,7 @@ void Tank::draw()
 	glColor3f(1,1,0);
 	glBegin(GL_LINES);
 		glVertex3f(location.x, location.y+hitBoxSize.y, location.z);
-		glVertex3f(location.x+(2*facing.x), location.y+hitBoxSize.y, location.z+(2*facing.z));
+		glVertex3f(location.x+(2*facing.x), location.y+hitBoxSize.y+(2*facing.y), location.z+(2*facing.z));
 	glEnd();
 
 	//Draws the hitbox outline of the object is selected
