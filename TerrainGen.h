@@ -10,34 +10,42 @@ public:
 		int type;			//Type of terrain
 		double height;		//Height at location
 		float gradient;		//Slope
+		Vector3 normal1, normal2;
 	};
 
-	double pField, pForest, pDesert;		//Probabilities of each terrain type being generated (Must sum to 100)
-	double persistence;
-	int avgHeight;
-	int waterHeight;		//Height above the lowest terrain point for water to be generated
-	int snowHeight;		//Height below the highest terrain point snow to be generated
-	int sandHeight;		//Height for shoreline to be generated
-	int featurePoints;	//Detail parameter for the Voronoi Graph, a higher number creates larger and taller mountain structures
-	double minHeight, maxHeight;
+			
 
 	double ** cTrack;		//Height values for the camera track
 	tile ** terrain;		//Data storage for terrain
-	nodePath ** nodes;
-	int nodeSpread;
+	nodePath ** nodes;		//Data storage for path finding nodes
+	int nodeSpread;			//Distance that nodes are seperated
 
-	TerrainGen(void);
+	TerrainGen(int seed);
 	
 	void getColor(int x, int y);
 	double * getTerrainHeight(int x, int z);
 	int getTerrainType(int x, int z);
 	double getTerrainGradient(int x, int z);
 	double getSpecificTerrainHeight(double x, double z);
+	Vector3 getN1(int x, int z);
+	Vector3 getN2(int x, int z);
 	double ** getCamTrack();
 	void resetNodes();
 	~TerrainGen(void);
 
 private:
+		int dX, dZ;			//Delta numbers used to denote the current generation resolution
+
+	double pField, pForest, pDesert,		//Probabilities of each terrain type being generated (Must sum to 100)
+		persistence;						//Terrain height variance
+	int avgHeight,
+		waterHeight,		//Height above the lowest terrain point for water to be generated
+		snowHeight,		//Height below the highest terrain point snow to be generated
+		sandHeight,		//Height for shoreline to be generated
+		featurePoints;	//Detail parameter for the Voronoi Graph, a higher number creates larger and taller mountain structures
+	double minHeight, maxHeight;
+
+
 	void generateTerrain(int dX, int dZ);
 	void modifyTerrainHeight();
 	void perturbance(int variation);

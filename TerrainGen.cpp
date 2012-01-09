@@ -1,16 +1,5 @@
 #include "TerrainGen.h"
 
-int dX, dZ;			//Delta numbers used to denote the current generation resolution
-const int seed = time(NULL);
-
-
-
-
-
-
-
-
-
 //
 //  FUNCTION: TerrainGen() (Constructor)
 //
@@ -30,13 +19,13 @@ const int seed = time(NULL);
 //			Adjusts terrain types to include water and snow if necessary
 //
 
-TerrainGen::TerrainGen(void)
+TerrainGen::TerrainGen(int seed)
 {
 	//Clear out the log file
 	FILE * pFile = fopen("log.txt", "w");
 	fclose(pFile);
-	
-	srand(time(NULL));
+
+	srand(seed);
 
 	dX = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
 	dZ = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
@@ -238,6 +227,19 @@ void TerrainGen::modifyTerrainHeight()
 					nodes[x/nodeSpread][z/nodeSpread].incentive = -2;
 				
 			}
+
+			Vector3 n1, n2;
+			//Get normal vector for the first triangle
+			setVector(n1, 0, terrain[x+1][z+1].height-terrain[x+1][z].height, 1);
+			setVector(n2, -1, terrain[x][z].height-terrain[x+1][z].height, 0);
+			terrain[x][z].normal1 = crossProduct(n2, n1);
+			normalize(terrain[x][z].normal1);
+
+			//Get normal vector for the second triangle
+			setVector(n1, 1, terrain[x+1][z+1].height-terrain[x][z+1].height, 0);
+			setVector(n2, 0, terrain[x][z].height-terrain[x][z+1].height, -1);
+			terrain[x][z].normal2 = crossProduct(n1, n2);
+			normalize(terrain[x][z].normal2);
 		}
 }
 
@@ -640,6 +642,16 @@ int TerrainGen::getTerrainType(int x, int z)
 double TerrainGen::getTerrainGradient(int x, int z)
 {
 	return terrain[x][z].gradient;
+}
+
+Vector3 TerrainGen::getN1(int x, int z)
+{
+	return terrain[x][z].normal1;
+}
+
+Vector3 TerrainGen::getN2(int x, int z)
+{
+	return terrain[x][z].normal2;
 }
 
 //

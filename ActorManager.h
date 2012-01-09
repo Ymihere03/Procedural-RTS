@@ -10,6 +10,15 @@
 class ActorManager
 {
 public:
+	struct ActorList
+	{
+		ActorList *next;
+		Actor * actor;
+		int id;
+	};
+
+	ActorList *root;
+
 	TerrainManager *tM;
 	//TerrainGen * world;
 
@@ -32,6 +41,8 @@ public:
 	~ActorManager(void);
 
 private:
+	int nextID;
+
 	int getNextID();
 
 	//Linked List functions

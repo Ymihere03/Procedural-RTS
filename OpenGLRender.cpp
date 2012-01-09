@@ -88,8 +88,8 @@ int OpenGLRender::drawGLScene()
 		glDisable(GL_LIGHTING);
 
 	checkLighting(true);
-	//tM->drawTerrain();
-	fastDrawTerrain();
+	tM->drawTerrain();
+	//fastDrawTerrain();
 	//drawTerrain();
 	//glScalef(worldScale, 1.0, worldScale);
 	//glCallList(terrainList);		//Draw Terrain List

@@ -127,80 +127,81 @@ void Tank::resetNodePath()
 
 void Tank::update(int timeElapsed, double height)
 {
-	
+	//Update the cooldown timer
+	cooldown -= timeElapsed;
+
+	if(cooldown < 0)
+	cooldown = 0;		//Gun is ready to fire
 
 	//Check if the path list has items queued in it
 	if(pathRoot && !moving)
 		setMoveTarget(pathRoot->nodeData);
 
-	//Update the cooldown timer
-	cooldown -= timeElapsed;
-
-	if(cooldown < 0)
-		cooldown = 0;		//Gun is ready to fire
-
-	//Check if we are close enough to the destination
-	if(abs(location.x - destination.x) < velocity*5 &&
-		abs(location.z - destination.z) < velocity*5)
-			moving = false;
-	else
-		moving = true;
-
-	//If the destination is within a certain distance of the actor, then it will drive in circles
-	//around the destination without ever reaching it. This will cause the actor to turn first
-	//before trying to move forward.
-	if(sqrt(pow(abs(location.x - destination.x),2) + pow(abs(location.z - destination.z),2)) < 20)
-		direction = -1;
-	
-
-	//Turning - Rotation
-	double targetOffset, targetRadians;
-
-	//Offset the atan2 function by the direction the actor is facing
-	targetOffset = atan2(facing.z, facing.x);
-	
-	//Find the angle in radians from the facing vector to the target direction
-	targetRadians = atan2(destination.z-location.z, destination.x-location.x) - targetOffset;
-	
-	//Sanity check to prevent radian values from getting too high or low.
-	//Also allows turning across the +pi/2 and -pi/2 bounds of the atan function.
-	if(targetRadians > PI)
-		targetRadians -= 2*PI;
-	else if(targetRadians < -PI)
-		targetRadians += 2*PI;
-
-	//Check if we don't need to turn any more to reach the destination
-	if(0 < targetRadians && targetRadians < turnSpeed)
+	if(moving)
 	{
-		turn(0);			//Don't apply a turn direction
-		moving = true;
-		direction = 1;
-		//Final check after both turn and movement adjustments have been applied.
-		//If this is true then the actor has fully reached its destination.
-		if(abs(location.x - destination.x) < 7 &&
-		abs(location.z - destination.z) < 7)
+
+		//Check if we are close enough to the destination
+		if(abs(location.x - destination.x) < velocity*5 &&
+			abs(location.z - destination.z) < velocity*5)
+				moving = false;
+		else
+			moving = true;
+
+		//If the destination is within a certain distance of the actor, then it will drive in circles
+		//around the destination without ever reaching it. This will cause the actor to turn first
+		//before trying to move forward.
+		if(sqrt(pow(abs(location.x - destination.x),2) + pow(abs(location.z - destination.z),2)) < 20)
+			direction = -1;
+	
+
+		//Turning - Rotation
+		double targetOffset, targetRadians;
+
+		//Offset the atan2 function by the direction the actor is facing
+		targetOffset = atan2(facing.z, facing.x);
+	
+		//Find the angle in radians from the facing vector to the target direction
+		targetRadians = atan2(destination.z-location.z, destination.x-location.x) - targetOffset;
+	
+		//Sanity check to prevent radian values from getting too high or low.
+		//Also allows turning across the +pi/2 and -pi/2 bounds of the atan function.
+		if(targetRadians > PI)
+			targetRadians -= 2*PI;
+		else if(targetRadians < -PI)
+			targetRadians += 2*PI;
+
+		//Check if we don't need to turn any more to reach the destination
+		if(0 < targetRadians && targetRadians < turnSpeed)
 		{
-			//If there is a movement point queued up then set it as the next destination
-			if(pathRoot)
+			turn(0);			//Don't apply a turn direction
+			moving = true;
+			direction = 1;
+			//Final check after both turn and movement adjustments have been applied.
+			//If this is true then the actor has fully reached its destination.
+			if(abs(location.x - destination.x) < 7 &&
+			abs(location.z - destination.z) < 7)
 			{
-				setMoveTarget(pathRoot->nodeData);
-				if(pathRoot->next != NULL)
-					pathRoot = pathRoot->next;
-				else
-					moving = false;
+				//If there is a movement point queued up then set it as the next destination
+				if(pathRoot)
+				{
+					setMoveTarget(pathRoot->nodeData);
+					if(pathRoot->next != NULL)
+						pathRoot = pathRoot->next;
+					else
+						moving = false;
+				}
 			}
 		}
+		else if(targetRadians > 0)
+			turn(1);		//Right turn
+		else if(targetRadians < 0)
+			turn(-1);		//Left turn
+
+		//Driving - Forward movement
+		if(moving)
+			setLocation(location.x + cos(radianFacing)*velocity*direction,
+					height, location.z + (sin(radianFacing))*velocity*direction);
 	}
-	else if(targetRadians > 0)
-		turn(1);		//Right turn
-	else if(targetRadians < 0)
-		turn(-1);		//Left turn
-
-	//Driving - Forward movement
-	if(moving)
-		setLocation(location.x + cos(radianFacing)*velocity*direction,
-				height, location.z + (sin(radianFacing))*velocity*direction);
-
 	checkLifeTime(timeElapsed);
 }
 

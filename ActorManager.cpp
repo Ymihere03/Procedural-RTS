@@ -1,19 +1,9 @@
 #include "ActorManager.h"
 
-
-int nextID = 0;
-
-struct ActorList
-{
-	ActorList *next;
-	Actor * actor;
-	int id;
-};
-
-ActorList *root;
-
 ActorManager::ActorManager(TerrainManager *t)
 {
+	root = NULL;
+	nextID = 0;
 	tM = t;
 
 	for(int i = 0; i < 5; i++)
@@ -67,6 +57,7 @@ void ActorManager::updateObjects(int timeElapsed)
 			}
 			if(target->actor->isDead())
 			{
+				log("bullet asploded at "+dtos(target->actor->getLocation().x)+", "+dtos(target->actor->getLocation().z)+"\n");
 				Actor *e = new GroundExplosion(target->actor->getLocation(), target->actor->getFacing());
 				addToList(e);
 			}
