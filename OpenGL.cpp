@@ -92,9 +92,15 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	//Initialize world objects
 	//world = new TerrainGen();
+	
+	//Clear out the log file
+	FILE * pFile = fopen("log.txt", "w");
+	fclose(pFile);
+
+	//Initialize Core program components
 	terrainManager = new TerrainManager();
 	actorManager = new ActorManager(terrainManager);
-	camera = new Camera(terrainManager->world->getCamTrack());
+	camera = new Camera(terrainManager->root->world->getCamTrack());
 	glRender = new OpenGLRender(*camera, *actorManager, *terrainManager, fontSet, selectedID);
 	
 
@@ -165,7 +171,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 						}
 						else											// If Window Is Visible
 						{
-							// Process Application Loop
+							//----  Main Process Loop  ----//
 							tickCount = GetTickCount ();				// Get The Tick Count
 							if(!glRender->update (tickCount - window.lastTickCount, mouse_x, mouse_y))	// Update The Counter
 								TerminateApplication(&window);
@@ -692,10 +698,10 @@ void rMouseSelection()
 				//}
 				//else
 				//{
-					setVector(tp1, y+step, *terrainManager->world->getTerrainHeight(y+step, x), x);
-					setVector(tp2, y+step+1, *terrainManager->world->getTerrainHeight(y+step+1, x), x);
-					setVector(tp3, y+step+1, *terrainManager->world->getTerrainHeight(y+step+1, x+1), x+1);
-					setVector(tp4, y+step, *terrainManager->world->getTerrainHeight(y+step, x+1), x+1);
+					setVector(tp1, y+step, terrainManager->root->world->getTerrainHeight(y+step, x), x);
+					setVector(tp2, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x), x);
+					setVector(tp3, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x+1), x+1);
+					setVector(tp4, y+step, terrainManager->root->world->getTerrainHeight(y+step, x+1), x+1);
 				//}
 				
 					/*glColor3f(1,1,1);
@@ -755,10 +761,10 @@ void rMouseSelection()
 				//}
 				//else
 				//{
-					setVector(tp1, x, *terrainManager->world->getTerrainHeight(x, y+step), y+step);
-					setVector(tp2, x + 1, *terrainManager->world->getTerrainHeight(x+1, y+step), y+step);
-					setVector(tp3, x + 1, *terrainManager->world->getTerrainHeight(x+1, y+step+1), y+step+1);
-					setVector(tp4, x, *terrainManager->world->getTerrainHeight(x, y+step+1), y+step+1);
+					setVector(tp1, x, terrainManager->root->world->getTerrainHeight(x, y+step), y+step);
+					setVector(tp2, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step), y+step);
+					setVector(tp3, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step+1), y+step+1);
+					setVector(tp4, x, terrainManager->root->world->getTerrainHeight(x, y+step+1), y+step+1);
 
 					/*glColor3f(1,1,1);
 					glBegin(GL_LINES);

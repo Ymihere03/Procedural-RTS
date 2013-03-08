@@ -19,14 +19,9 @@
 //			Adjusts terrain types to include water and snow if necessary
 //
 
-TerrainGen::TerrainGen(int seed)
+TerrainGen::TerrainGen(Vector2 l)
 {
-	//Clear out the log file
-	FILE * pFile = fopen("log.txt", "w");
-	fclose(pFile);
-
-	srand(seed);
-
+	location = l;
 	dX = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
 	dZ = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
 
@@ -49,16 +44,17 @@ TerrainGen::TerrainGen(int seed)
 	}
 
 	//Allocate memory for camera Track data
-	cTrack = (double **) malloc (9 * sizeof(double *));
+	int delta = 32;
+	cTrack = (double **) malloc (delta * sizeof(double *));
 	if(!cTrack)
 	{
 		log("Memory allocation error while making camera Track\n");
 		exit(1);
 	}
 
-	for(int k = 0; k <= 9; k++)
+	for(int k = 0; k <= delta; k++)
 	{
-		cTrack[k] = (double *) malloc (9 * sizeof(double));
+		cTrack[k] = (double *) malloc (delta * sizeof(double));
 		if(!cTrack[k])
 		{
 			log("Memory allocation error while making camera Track\n");
@@ -85,50 +81,61 @@ TerrainGen::TerrainGen(int seed)
 		}
 	}
 
-	
-	switch(1)//getRandomAsI(4))
+	waterHeight = 3;		//Default height for water to be generated
+	deepWater = waterHeight-3;
+	snowHeight = 20;		//Height for snow to be generated
+
+	biome = LAKES;//getRandomAsI(BIOME_COUNT);
+	switch(biome)
 	{
 		//Fields with sparse trees
-	case 0:	pField = 75, pForest = 25, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)
-		persistence = .38 + getRandomAsD(7)/100;
-		avgHeight = 20+getRandomAsD(50);
-		waterHeight = 10;
-		snowHeight = 0;
+	case PLAINS:	pField = 65, pForest = 35, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)
+		persistence = .5 + getRandomAsD(8)/100;
+		//avgHeight = 20+getRandomAsD(20);
+		waterHeight = 0;
+		//snowHeight = 0;
 		featurePoints = 100;
 		log("Terrain type 0 was picked.\n");
 		break;
 
 		//Mountainous with lots of trees
-	case 1: pField = 50, pForest = 50, pDesert = 0;
-		persistence = .3 + getRandomAsD(5)/100;
-		avgHeight = 100+getRandomAsD(100);
-		waterHeight = 10;
-		snowHeight = 30;
-		featurePoints = 30;
+	case MOUNTAINS: pField = 55, pForest = 45, pDesert = 0;
+		persistence = .9;// + getRandomAsD(5)/100;
+		waterHeight = -100;
+		//avgHeight = 100+getRandomAsD(100);
+		featurePoints = 50;
 		log("Terrain type 1 was picked.\n");
 		break;
 
 		//Flat deserts with some brush
-	case 2: pField = 25, pForest = 0, pDesert = 75;
+	case DESERT: pField = 20, pForest = 0, pDesert = 80;
 		persistence = .30 + getRandomAsD(5)/100;
-		avgHeight = 20+getRandomAsD(20);
 		waterHeight = 0;
-		snowHeight = 0;	
-		featurePoints = 100;
+		//avgHeight = 20+getRandomAsD(20);
+		featurePoints = 60;
 		log("Terrain type 2 was picked.\n");
 		break;
 
 		//Average mix of fields and trees with extra water
-	case 3: pField = 60, pForest = 40, pDesert = 0;
-		persistence = .45 + getRandomAsD(10)/100;
-		avgHeight = getRandomAsD(20);
-		waterHeight = 35;		//Height for water to be generated
-		snowHeight = 0;		//Height for snow to be generated
-		featurePoints = 40;
+	case FOREST_MIX: pField = 40, pForest = 60, pDesert = 0;
+		persistence = .52 + getRandomAsD(10)/100;
+		featurePoints = 60;
 		log("Terrain type 3 was picked.\n");
 		break;
+
+	case LAKES:	pField = 85, pForest = 15, pDesert = 0;		//Probabilities of each terrain type being generated (Must sum to 100)
+		persistence = .4 + getRandomAsD(8)/100;
+		//avgHeight = 20+getRandomAsD(20);
+		waterHeight = 1;
+		//snowHeight = 0;
+		featurePoints = 100;
+		log("Terrain type 4 was picked.\n");
+		break;
+
+	default:
+		log("Invalid biome "+itos(biome)+"value picked.\n");
 	}
-	sandHeight = waterHeight + 3;
+	sandHeight = waterHeight + 1;
 	log("persistence: "+dtos(persistence)+"\n");
 
 
@@ -136,7 +143,9 @@ TerrainGen::TerrainGen(int seed)
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
 		for(int x = 0; x < MAX_WORLD_SIZE; x++)
 		{
-			terrain[x][z].height = 0;
+			terrain[x][z].x = x;
+			terrain[x][z].y = 0;
+			terrain[x][z].z = z;
 
 			if(x%dX == 0 && z%dX == 0)
 				terrain[x][z].type = terrainTypeDistribution();
@@ -150,6 +159,8 @@ TerrainGen::TerrainGen(int seed)
 
 	//Make the track for the camera to move along
 	makeCamTrack();
+
+	
 
 	log(dtos(minHeight) +","+dtos(maxHeight)+"\n");
 }
@@ -165,28 +176,25 @@ TerrainGen::TerrainGen(int seed)
 void TerrainGen::modifyTerrainHeight()
 {
 	//Initialize the Perlin Noise map data
-	HeightMap * pMap = new PerlinNoise(persistence, avgHeight);
+	HeightMap * pMap = new PerlinNoise(persistence, avgHeight, biome);
 	for(int i = 0; i <= 6; i++)
 	{
 		pMap->create();
-		combineHeightMapWithTerrain(pMap);
+		combineHeightMapWithTerrain(pMap, i);
 	}
 
-	//Initialize the Voronoi Graph map data
-	/*if(persistence >= .4)
-	{
+	if(biome == DESERT) {
 		HeightMap * vMap = new VoronoiGraph(featurePoints);
-		combineHeightMapWithTerrain(vMap);
-	}*/
-	//perturbance(8);
+		vMap->create();
+		combineHeightMapWithTerrain(vMap, 10);
+	}
 	
 	//Smooth the terrain heights
-	
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
 		for(int x = 0; x < MAX_WORLD_SIZE; x++)
 		{
 			//Smooth terrain
-			for(int i = 6; i >= 0; i--)
+			for(int i = 5; i >= 0; i--)
 				smooth(x, z, i);
 
 			//Finds the lowest and the highest point in the terrain
@@ -200,22 +208,28 @@ void TerrainGen::modifyTerrainHeight()
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
 		for(int x = 0; x < MAX_WORLD_SIZE; x++)
 		{
-			findSlope(x, z);
+			//findSlope(x, z);
 
-			//if(terrain[x][z].gradient > .7)
-				//terrain[x][z].type = 2;
+			//Calculate sand before water
+			if(getTerrainHeight(x,z) < sandHeight)
+				terrain[x][z].type = SAND;
 
-			//Water is below a certain height
-			if(terrain[x][z].height < minHeight+waterHeight)
-				terrain[x][z].type = 4;
+			//Water will override the sand if it's low enough
+			if(terrain[x][z].y < waterHeight) {
+				//if(!(terrain[x][z].y < deepWater))
+				//	terrain[x][z].y = waterHeight;
+				terrain[x][z].type = WATER;
+			}
 
 			//Snow is above a certain height
-			if(terrain[x][z].height > maxHeight-snowHeight)
-				terrain[x][z].type = 3;
-
-			//Sand is just above water
-			if(minHeight+waterHeight < *getTerrainHeight(x,z) && *getTerrainHeight(x,z) < minHeight+sandHeight)
-				terrain[x][z].type = 2;
+			//int heightDiff = terrain[x][z].y-snowHeight;
+			if(terrain[x][z].y > snowHeight) {
+				terrain[x][z].type = SNOW;
+			}
+			else if(terrain[x][z].y > snowHeight-2) {
+				if(choose(getDecimalRandom(terrain[x][z].y-snowHeight+3)-1))
+					terrain[x][z].type = SNOW;
+			}
 
 			//Initialize the nodes for pathfinding
 			if(x%nodeSpread == 0 && z%nodeSpread == 0)
@@ -230,14 +244,14 @@ void TerrainGen::modifyTerrainHeight()
 
 			Vector3 n1, n2;
 			//Get normal vector for the first triangle
-			setVector(n1, 0, terrain[x+1][z+1].height-terrain[x+1][z].height, 1);
-			setVector(n2, -1, terrain[x][z].height-terrain[x+1][z].height, 0);
+			setVector(n1, 0, terrain[x+1][z+1].y-terrain[x+1][z].y, 1);
+			setVector(n2, -1, terrain[x][z].y-terrain[x+1][z].y, 0);
 			terrain[x][z].normal1 = crossProduct(n2, n1);
 			normalize(terrain[x][z].normal1);
 
 			//Get normal vector for the second triangle
-			setVector(n1, 1, terrain[x+1][z+1].height-terrain[x][z+1].height, 0);
-			setVector(n2, 0, terrain[x][z].height-terrain[x][z+1].height, -1);
+			setVector(n1, 1, terrain[x+1][z+1].y-terrain[x][z+1].y, 0);
+			setVector(n2, 0, terrain[x][z].y-terrain[x][z+1].y, -1);
 			terrain[x][z].normal2 = crossProduct(n1, n2);
 			normalize(terrain[x][z].normal2);
 		}
@@ -260,7 +274,7 @@ void TerrainGen::generateTerrain(int dX, int dZ)
 			tile *parents[4];
 			//Current tile being referenced
 			parents[0] = &terrain[x][z];
-
+		
 			double pSum = 0;
 
 			//If there is room in both directions then use four parents
@@ -296,6 +310,13 @@ void TerrainGen::generateTerrain(int dX, int dZ)
 				parents[1] = &terrain[x][z+dZ];		//Find other parent tile
 				if(x > 0)
 					parents[2] = &terrain[x-dX/2][z+dZ/2];	//Find other parent tile
+				else
+				{
+					Vector2 adjLoc;
+					setCoord(adjLoc, location.x-1, location.y);
+					getTileDataFromFile(*parents[2], adjLoc, MAX_WORLD_SIZE+(x-dX/2), z+dZ/2);
+					parents[2]->y = 0;
+				}
 
 				if(x < MAX_WORLD_SIZE-1)
 					parents[3] = &terrain[x+dX/2][z+dZ/2];	//Find other parent tile
@@ -421,7 +442,7 @@ void TerrainGen::perturbance(int variation)
 			}
 			dX = cosineInterpolate(xVal[xMin], xVal[xMax], (x%delta)/(double)delta);
 			//double dummy = dX;
-			*getTerrainHeight(x, z) = *getTerrainHeight(x+(int)dZ, z+(int)dX);
+			//getTerrainHeight(x, z) = getTerrainHeight(x+(int)dZ, z+(int)dX);
 		}
 		
 		xMax = 0;
@@ -444,12 +465,12 @@ int TerrainGen::terrainTypeDistribution()
 	int choice = rand() % 100;
 
 	if(choice <= pField)
-		return 0;	//Field
+		return FIELD;	//Field
 	
 	if(choice <= pField + pForest)
-		return 1;	//Forest
+		return FOREST;	//Forest
 
-	return 2;	//Desert
+	return SAND;	//Desert
 }
 
 //
@@ -460,12 +481,20 @@ int TerrainGen::terrainTypeDistribution()
 //  COMMENTS: 
 //
 
-void TerrainGen::combineHeightMapWithTerrain(HeightMap *hMap)
+void TerrainGen::combineHeightMapWithTerrain(HeightMap *hMap, int iter)
 {
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
 		for(int x = 0; x < MAX_WORLD_SIZE; x++)
 		{
-			terrain[x][z].height += *hMap->getMap(x, z);
+			//Combine only the high height values of the large features
+			if(biome == MOUNTAINS && iter < 3)
+				terrain[x][z].y += *hMap->getMap(x, z);
+			//Combine only the low values of the small features
+			if(biome == MOUNTAINS && iter == 5)
+				terrain[x][z].y += *hMap->getMap(x, z)/2;
+
+			if(biome != MOUNTAINS)
+				terrain[x][z].y += *hMap->getMap(x, z);
 		}
 }
 
@@ -480,7 +509,7 @@ void TerrainGen::combineHeightMapWithTerrain(HeightMap *hMap)
 
 void TerrainGen::thermalErosion()
 {
-	double erodeThreshold, heightDiff;
+	/*double erodeThreshold, heightDiff;
 
 	//Iterate over the map
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
@@ -493,14 +522,14 @@ void TerrainGen::thermalErosion()
 					if(a == 0 && b == 0)
 						continue;
 
-					heightDiff = *getTerrainHeight(x, z) - *getTerrainHeight(x+a, z+b);
+					heightDiff = getTerrainHeight(x, z) - getTerrainHeight(x+a, z+b);
 					if(abs(heightDiff) > erodeThreshold)
 					{
 				
 
 					}
 				}
-		}
+		}*/
 }
 
 //
@@ -513,13 +542,14 @@ void TerrainGen::thermalErosion()
 
 void TerrainGen::makeCamTrack()
 {
-	for(int z = 0; z <= 4; z++)
-		for(int x = 0; x <= 4; x++)
+	double delta = (MAX_WORLD_SIZE-1)/32.0;	//Distance between the inital points of the track
+	for(int z = 0; z <= MAX_WORLD_SIZE/4; z++)
+		for(int x = 0; x <= MAX_WORLD_SIZE/4; x++)
 		{
-			if(getTerrainType(x*(MAX_WORLD_SIZE-1)/4, z*(MAX_WORLD_SIZE-1)/4) == 4)
-				cTrack[x][z] = waterHeight+25;
+			if(getTerrainType(x*delta, z*delta) == WATER)
+				cTrack[x][z] = waterHeight+2;
 			else
-				cTrack[x][z] = terrain[x*(MAX_WORLD_SIZE-1)/4][z*(MAX_WORLD_SIZE-1)/4].height + 10;
+				cTrack[x][z] = getTerrainHeight(x*delta, z*delta) + 2;
 		}
 }
 
@@ -535,15 +565,14 @@ void TerrainGen::smooth(int x, int z, int spread)
 {
 	double corners, sides, center;
 
-	if(x <= spread-1 || z <= spread-1 || x >= MAX_WORLD_SIZE-spread || z >= MAX_WORLD_SIZE-spread)
-		terrain[x][z].height = *getTerrainHeight(x, z);
+	if(x <= spread-1 || z <= spread-1 || x >= MAX_WORLD_SIZE-spread || z >= MAX_WORLD_SIZE-spread){}
 	else
 	{
-		corners = (*getTerrainHeight(x-spread, z-spread) + *getTerrainHeight(x+spread, z+spread) + *getTerrainHeight(x+spread, z-spread) + *getTerrainHeight(x-spread, z+spread))/16;
-		sides = (*getTerrainHeight(x-spread, z) + *getTerrainHeight(x+spread, z) + *getTerrainHeight(x, z-spread) + *getTerrainHeight(x, z+spread))/8;
-		center = *getTerrainHeight(x, z)/4;
+		corners = (getTerrainHeight(x-spread, z-spread) + getTerrainHeight(x+spread, z+spread) + getTerrainHeight(x+spread, z-spread) + getTerrainHeight(x-spread, z+spread))/16;
+		sides = (getTerrainHeight(x-spread, z) + getTerrainHeight(x+spread, z) + getTerrainHeight(x, z-spread) + getTerrainHeight(x, z+spread))/8;
+		center = getTerrainHeight(x, z)/4;
 	
-		terrain[x][z].height = corners + sides + center;
+		terrain[x][z].y = corners + sides + center;
 	}
 }
 
@@ -552,10 +581,10 @@ void TerrainGen::findSlope(int x, int z)
 	double h[4], max;
 
 	
-	h[0] = abs(*getTerrainHeight(x, z)-*getTerrainHeight(x-1, z));
-	h[1] = abs(*getTerrainHeight(x, z)-*getTerrainHeight(x+1, z));
-	h[2] = abs(*getTerrainHeight(x, z)-*getTerrainHeight(x, z-1));
-	h[3] = abs(*getTerrainHeight(x, z)-*getTerrainHeight(x, z+1));
+	h[0] = abs(getTerrainHeight(x, z)-getTerrainHeight(x-1, z));
+	h[1] = abs(getTerrainHeight(x, z)-getTerrainHeight(x+1, z));
+	h[2] = abs(getTerrainHeight(x, z)-getTerrainHeight(x, z-1));
+	h[3] = abs(getTerrainHeight(x, z)-getTerrainHeight(x, z+1));
 	
 	max = h[0];
 	for(int i = 1; i < 4; i++)
@@ -597,26 +626,26 @@ void TerrainGen::resetNodes()
 
 void TerrainGen::setTerrainData(int x, int z)
 {
-	if(*getTerrainHeight(x, z) < minHeight)
-		minHeight = *getTerrainHeight(x, z);
+	if(getTerrainHeight(x, z) < minHeight)
+		minHeight = getTerrainHeight(x, z);
 
-	else if(*getTerrainHeight(x, z) > maxHeight)
-		maxHeight = *getTerrainHeight(x, z);
+	else if(getTerrainHeight(x, z) > maxHeight)
+		maxHeight = getTerrainHeight(x, z);
 }
 
 void TerrainGen::getColor(int x, int z)
 {
 	switch(terrain[x][z].type)
 	{
-		case 0: glColor3f(0.1f,1,0.1f);		//Fields
+		case FIELD: glColor3f(0.1f,1,0.1f);		//Fields
 			break;
-		case 1: glColor3f(0,0.5f,0);		//Forest
+		case FOREST: glColor3f(0,0.5f,0);		//Forest
 			break;
-		case 2: glColor3f(0.7f,0.7f,0);		//Desert
+		case SAND: glColor3f(0.7f,0.7f,0);		//Desert
 			break;
-		case 3: glColor3f(0.8f,0.8f,0.8f);	//Snow
+		case SNOW: glColor3f(0.8f,0.8f,0.8f);	//Snow
 			break;
-		case 4: glColor3f(0,0,.6f);			//Water
+		case WATER: glColor3f(0,0,.6f);			//Water
 			break;
 	}
 }
@@ -626,12 +655,13 @@ double ** TerrainGen::getCamTrack()
 	return cTrack;
 }
 
-double * TerrainGen::getTerrainHeight(int x, int z)
+double TerrainGen::getTerrainHeight(int x, int z)
 {
-	double val = 0;
+	//double val = 0;
 	if(x < 0 || z < 0 || x > MAX_WORLD_SIZE-1 || z > MAX_WORLD_SIZE-1)
-		return &val;
-	return &terrain[x][z].height;
+		return 0;
+	else
+		return terrain[x][z].y;
 }
 
 int TerrainGen::getTerrainType(int x, int z)
@@ -670,10 +700,10 @@ double TerrainGen::getSpecificTerrainHeight(double x, double z)
 	setVector(l1, x, -500, z);
 	setVector(l2, x, 700, z);
 
-	setVector(p1, (int)x, *getTerrainHeight((int)x,(int)z), (int)z);
-	setVector(p2, (int)x+1, *getTerrainHeight((int)x+1,(int)z), (int)z);
-	setVector(p3, (int)x+1, *getTerrainHeight((int)x+1,(int)z+1), (int)z+1);
-	setVector(p4, (int)x, *getTerrainHeight((int)x,(int)z+1), (int)z+1);
+	setVector(p1, (int)x, getTerrainHeight((int)x,(int)z), (int)z);
+	setVector(p2, (int)x+1, getTerrainHeight((int)x+1,(int)z), (int)z);
+	setVector(p3, (int)x+1, getTerrainHeight((int)x+1,(int)z+1), (int)z+1);
+	setVector(p4, (int)x, getTerrainHeight((int)x,(int)z+1), (int)z+1);
 
 	if(checkLineIntersect(p2, p3, p1, l1, l2, target) || checkLineIntersect(p4, p3, p1, l1, l2, target))
 		return target.y;
@@ -703,9 +733,41 @@ double TerrainGen::getProbabilityByType(int terrainType)
 	case 2:
 		return pDesert;
 	default:
-		log("YAY???");
 		return -1;
 	}
+}
+
+bool TerrainGen::getTileDataFromFile(tile &t, Vector2 chunkLocation, int tileX, int tileZ)
+{
+	string fileName = "terrain/"+itos(chunkLocation.x)+""+itos(chunkLocation.y)+".txt";
+	string test = "terrain/00.txt";
+	if(fileName != test)
+		return false;
+	//string fileName = "00.txt";
+	//string fileName2 = "00.txt";
+	const char * f = fileName.c_str();
+	FILE * file = fopen(f, "r");
+	if(file == NULL){
+		log("Couldn't open file "+fileName);
+		return false;
+	}
+
+
+	int n = 0;
+	float f1=0, f2=0;
+	for(int i = 0; i < tileX*(MAX_WORLD_SIZE-1)+tileZ; i++) {
+		fscanf(file, "%d", &n);
+		fscanf(file, "%E", &f1);
+		fscanf(file, "%E", &f2);
+	}
+
+
+
+	t.type = n;
+	t.y = f1;
+	t.gradient = f2;
+
+	return true;
 }
 
 TerrainGen::~TerrainGen(void)

@@ -5,12 +5,13 @@ class Tank :
 	public Actor
 {
 public:
-	Tank(double x, double y, double z, double xSize, double ySize, double zSize);
+	Tank(double x, double y, double z);
 
 	void update(int timeElapsed, double height);
 	void setMoveTarget(Vector2 &v);
-	void turn(int direction);
+	void turn(int direction, double elapsedSeconds, double targetRadians);
 	bool isReadyToShoot();
+	
 	
 	bool checkHitBox(Vector3 &ray1, Vector3 &ray2);
 	void draw();
@@ -30,8 +31,18 @@ private:
 	GLMmodel *model;
 	int direction, reloadTime, cooldown;
 	nodePath *pathRoot;
-	
+	nodePath3d *tracerRoot;
 
+	int tracerSpacing;
+	double turretAngle, turretFacingRadians, turretLength;
+	Vector3 turretLocation;
+
+	double uphillPenalty, downhillBonus;
+	
+	double getTurretAngle();
+	Vector3 getTurretLocation();
 	void setHitBox();
+	void makeTracer();
+	void calcMovesSpent(Vector3 oldLocation, Vector3 newLocation);
 };
 

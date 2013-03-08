@@ -45,21 +45,47 @@ string itos(int number)
 	return str;
 }
 
+double getDecimalRandom(int randBound)
+{
+	return (rand() % (randBound*100))/100.0;
+}
+
 double getRandomAsD(int randBound)
 {
 	//Will generate a random double between 0 and randBound
-	return rand() % randBound;
+	return rand() % (randBound+1);
 }
 
 int getRandomAsI(int randBound)
 {
 	//Will generate a random integer between 0 and randBound
-	return (int)(rand() % randBound);
+	return (int)(rand() % (randBound+1));
+}
+
+bool choose(float probability)
+{
+	//Return a value of true based on the probability and return false otherwise.
+	double decision = getRandomAsD(100);
+	if(decision < probability*100) return true;
+	else return false;
 }
 
 double findDistance(double startX, double startZ, double endX, double endZ)
 {
 	return sqrt(pow(endX - startX,2) + pow(endZ - startZ,2));
+}
+
+double find3dDistance(Vector3 v1, Vector3 v2)
+{
+	Vector3 v;
+	setVector(v, v1.x-v2.x, v1.y-v2.y, v1.z-v2.z);
+
+	return sqrt((v.x*v.x) + (v.y*v.y) + (v.z*v.z));
+}
+
+double find3dDistance(Vector3 v)
+{
+	return sqrt((v.x*v.x) + (v.y*v.y) + (v.z*v.z));
 }
 
 double cosineInterpolate(double a, double b, double x)
@@ -125,7 +151,7 @@ void setCoord(Vector2 &v, double x, double y)
 //
 //This function determines if the line intersects with the triangle
 //If they do intersect then values are given to the target vector on the exact coordinates that the line crosses the triangle
-BOOL checkLineIntersect(Vector3 tp1, Vector3 tp2, Vector3 tp3, Vector3 lp1, Vector3 lp2, Vector3 &target)
+BOOL checkLineIntersect(Vector3 tp1, Vector3 tp2, Vector3 tp3, Vector3 lp1, Vector3 lp2, Vector3 &intersect)
 {
 	//tp1 must be the 90 degree angle in the triangle
 	Vector3 n1, n2;				//Vectors for holding temporary data
@@ -177,7 +203,7 @@ BOOL checkLineIntersect(Vector3 tp1, Vector3 tp2, Vector3 tp3, Vector3 lp1, Vect
 	setVector(n1, intersectPos.x-tp1.x, intersectPos.y-tp1.y, intersectPos.z-tp1.z);
 	if(dotProduct(vTest, n1) < 0) return FALSE;
 
-	target =  intersectPos;
+	intersect =  intersectPos;
 
 	return TRUE;
 }

@@ -20,9 +20,9 @@ private:
 	struct quadList
 	{
 		quadList *next;
-		Vector3 quadLocation;
-		Vector3 quadFacing;
-		double downwardVelocity, velocity;
+		Vector3 quadLocation,
+			quadDirection;
+		double velocity;
 		int totalLife, lifeSpan;
 		int id;
 	};

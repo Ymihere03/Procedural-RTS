@@ -37,6 +37,12 @@ public:
 	virtual void resetNodePath()
 	{return;}
 
+	virtual double getTurretAngle()
+	{return NULL;}
+
+	virtual Vector3 getTurretLocation()
+	{return getLocation();}
+
 	virtual void update(int timeElapsed, double height)=0;
 	virtual void draw()=0;
 	virtual bool isDead()=0;
@@ -48,6 +54,7 @@ public:
 	double getTargetRads();
 	double getFacingRads();
 	double getVelocity();
+	double getMovePointsLeft();
 
 	void init(string path);
 	~Actor(void);
@@ -60,6 +67,7 @@ protected:
 	double velocity, turnSpeed, radianFacing;
 	bool selected, moving, dead;
 	int lifeTime, totalLifeTime;
+	double totalMovePoints, movePointsLeft;
 	
 	//int id;
 	

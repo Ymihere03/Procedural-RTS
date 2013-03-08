@@ -1,21 +1,23 @@
 #include "Bullet.h"
 
 
-Bullet::Bullet(Vector3 &position, Vector3 &direction)
+Bullet::Bullet(Vector3 &position, Vector3 &direction2)
 {
 	type = "Bullet";
-
-	setVector(location, position.x+direction.x, position.y+.75, position.z+direction.z);
+   	setVector(location, position.x, position.y, position.z);
+	setVector(initialLocation, position.x, position.y, position.z);
+	log("Bullet shot at x:"+dtos(location.x)+" y:"+dtos(location.y)+" z:"+dtos(location.z)+"\n");
+	dead = false;
+	velocity = 30;		//Units per second
 
 	//Facing vector with a bit of randomness
-	setVector(facing, direction.x+(getRandomAsD(20)-10)/700.0, direction.y, direction.z+(getRandomAsD(20)-10)/700.0);
+	setVector(facing, direction2.x+(getRandomAsD(20)-10)/400.0, direction2.y+(getRandomAsD(20)-10)/350.0, direction2.z+(getRandomAsD(20)-10)/400.0);
 	normalize(facing);
-	
-	dead = false;
-	velocity = 100;		//Units per second
-	downwardVelocity = -1*(velocity-velocity*facing.y+(getRandomAsD(10)-5)/500.0);
+
+	setVector(initialFacing, facing.x*velocity, facing.y*velocity, facing.z*velocity);
+
 	lifeTime = 0;
-	totalLifeTime = 20000;
+	totalLifeTime = 8000;
 	
 }
 
@@ -29,26 +31,24 @@ Bullet::Bullet(Vector3 &position, Vector3 &direction)
 
 void Bullet::update(int timeElapsed, double height)
 {
-	//Convert milliseconds to seconds
-	double newTime = timeElapsed/1000.0;
-
-	Vector3 oldLocation;
-	setVector(oldLocation, location.x, location.y, location.z);
-
-	//Adjust location based on direction, velocity, and distance by time elapsed
-	setLocation(location.x + facing.x*velocity*newTime,
-		location.y+(velocity+downwardVelocity)*newTime, location.z + facing.z*velocity*newTime);
-
-	facing.y = location.y-oldLocation.y;
-
-	//Factor in gravity to make a new downward velocity
-	downwardVelocity += GRAVITY;
-
 	//Check if the bullet's lifetime is over
 	checkLifeTime(timeElapsed);
 
-	if(height > location.y)
-	{
+	//Convert milliseconds to seconds
+	double newTime = (double)(lifeTime)/1000.0;
+	Vector3 oldLocation = location;
+	
+
+	//Adjust location based on direction, velocity, and distance by time elapsed
+	setLocation(initialLocation.x + initialFacing.x*newTime,
+		initialLocation.y + initialFacing.y*newTime + GRAVITY*pow(newTime, 2)*.5, initialLocation.z + initialFacing.z*newTime);
+
+	//Recalculate facing vector
+	setVector(facing, location.x-oldLocation.x, location.y-oldLocation.y, location.z-oldLocation.z);
+	normalize(facing);
+	
+	//If below ground, then explode
+	if(height > location.y) {
 		dead = true;
 	}
 }

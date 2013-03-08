@@ -17,6 +17,6 @@ public:
 	~Bullet(void);
 
 private:
-	double downwardVelocity;
+	Vector3 direction, initialLocation, initialFacing;
 };
 

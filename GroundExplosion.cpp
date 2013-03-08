@@ -5,14 +5,16 @@ GroundExplosion::GroundExplosion(Vector3 &position, Vector3 &f)
 	type = "Emitter";
 	dead = false;
 	nextID = 0;
-	velocity = 30;
+	velocity = 3;
 	lifeTime = 0;
-	totalLifeTime = 1000;
+	totalLifeTime = 1500;
 	root = NULL;
 
 	setVector(location, position.x, position.y, position.z);
 	setVector(facing, f.x, f.y, f.z);
-	for(int i = 0; i < 80; i++)
+	
+
+	for(int i = 0; i < 40; i++)
 		addQuad();
 }
 
@@ -25,14 +27,16 @@ void GroundExplosion::update(int timeElapsed, double height)
 	while(target != NULL)
 	{
 		target->lifeSpan += timeElapsed;
+		double lifeSpanMilli = target->lifeSpan/1000.0;
 		if(target->lifeSpan > target->totalLife)
 			deleteQuad(target->id);
 
-		setVector(target->quadLocation, target->quadLocation.x + target->quadFacing.x*target->velocity*newTime,
-			target->quadLocation.y+target->quadFacing.y*(target->velocity+target->downwardVelocity)*newTime, 
-			target->quadLocation.z + target->quadFacing.z*target->velocity*newTime);
+		setVector(target->quadLocation,
+			target->quadLocation.x + target->quadDirection.x*newTime,
+			target->quadLocation.y + target->quadDirection.y*newTime, 
+			target->quadLocation.z + target->quadDirection.z*newTime);
 
-		target->downwardVelocity += GRAVITY;
+		setVector(target->quadDirection, target->quadDirection.x, target->quadDirection.y+GRAVITY*pow(lifeSpanMilli, 2)*.1, target->quadDirection.z);
 
 		target = target->next;
 	}
@@ -67,6 +71,7 @@ void GroundExplosion::draw()
 		
 		target = target->next;
 	}
+	glBindTexture( GL_TEXTURE_2D, 0);
 }
 
 void GroundExplosion::kill()
@@ -90,19 +95,32 @@ bool GroundExplosion::isDead()
 
 void GroundExplosion::genQuad(quadList *q)
 {
-	double zStart = getRandomAsD(2)-1, xStart = getRandomAsD(2)-1;
-	setVector(q->quadLocation, location.x+xStart, location.y, location.z+zStart);
+	Vector3 f;
+
+	//Random Facing vector
+	setVector(f, (getRandomAsD(50)-25)/100, 0, (getRandomAsD(50)-25)/100);
+  	normalize(f);
+
+	double zStart = (getRandomAsD(50)-25)/100, xStart = (getRandomAsD(50)-25)/100;
+	setVector(q->quadLocation, location.x+(xStart*f.x), location.y, location.z+(zStart*f.z));
 	q->id = nextID;
 
+	double angle = (getRandomAsD(85)+5)*PI/180;
+
+	
 	
 	q->lifeSpan = 0;
 	q->id = nextID;
-	q->downwardVelocity = 0;
-	q->velocity = getRandomAsI(velocity);
+	q->velocity = getDecimalRandom(velocity);
 	q->totalLife = getRandomAsI(totalLifeTime);
 
-	setVector(q->quadFacing, (getRandomAsD(100)-50)/100+facing.x, -facing.y+getRandomAsD(40)/100, (getRandomAsD(100)-50)/100+facing.z);
-	normalize(q->quadFacing);
+	setVector(q->quadDirection, 
+		f.x*q->velocity, 
+		q->velocity*sin(angle)*3, 
+		f.z*q->velocity);
+
+	//setVector(q->quadFacing, (getRandomAsD(100)-50)/100+facing.x, -facing.y+getRandomAsD(40)/100, (getRandomAsD(100)-50)/100+facing.z);
+	//normalize(q->quadFacing);
 
 	nextID++;
 	q->next = NULL;

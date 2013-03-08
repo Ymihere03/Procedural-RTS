@@ -21,9 +21,8 @@ void VoronoiGraph::create()
 
 		FPlist[i].x = x;
 		FPlist[i].y = z;
-		double r = getRandomAsI(100);
 
-		if(r < 75)
+		if(choose(.3))
 			FPlist[i].z = 0;		//Cell will be drawn
 		else
 			FPlist[i].z = -1;		//Cell will not be drawn
@@ -32,10 +31,12 @@ void VoronoiGraph::create()
 	for(int z = 0; z < MAX_WORLD_SIZE; z++)
 		for(int x = 0; x < MAX_WORLD_SIZE; x++)
 		{
+			//Starting values
 			double minDist = pow(FPlist[0].x-x, 2.0) + pow(FPlist[0].y-z, 2.0);
 			double minDist2 = pow(FPlist[1].x-x, 2.0) + pow(FPlist[1].y-z, 2.0);
 			int p = 0, p2 = 1;		//Keep track of the indicies that correspond to the minimum distance values
 
+			//Find the two closest feature points to the current (x,z) location
 			for(int i = 2; i < featurePoints; i++)
 			{
 				double newDist = pow(FPlist[i].x-x, 2.0) + pow(FPlist[i].y-z, 2.0);
@@ -54,7 +55,10 @@ void VoronoiGraph::create()
 					minDist2 = newDist;
 				}
 			}
-			*getMap(x, z) = (minDist2-minDist)/500;
+
+			//Only draw the cells that are designated to be drawn
+			if(FPlist[p].z == 0)
+				*getMap(x, z) = (minDist2-minDist)/100;
 		}
 }
 

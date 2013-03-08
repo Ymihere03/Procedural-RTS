@@ -63,7 +63,7 @@ BOOL OpenGLRender::initialize(Vector2* windowSize)
 
 	loadTextures();
 	//drawTerrainAsList();
-
+	tM->testTex = testTex;
 
 	return TRUE;
 }
@@ -91,6 +91,7 @@ int OpenGLRender::drawGLScene()
 	tM->drawTerrain();
 	//fastDrawTerrain();
 	//drawTerrain();
+
 	//glScalef(worldScale, 1.0, worldScale);
 	//glCallList(terrainList);		//Draw Terrain List
 	//glScalef(-worldScale, -1.0, -worldScale);
@@ -215,8 +216,11 @@ void OpenGLRender::overlayDisplay()
 				if(*selectedID != -1)
 				{
 					rasterStringToOverlay("Box Data:");
-					rasterStringToOverlay("     Box Height: "+itos(aM->getActorByID(*selectedID)->getLocation().y));
+					rasterStringToOverlay("     X: "+itos(aM->getActorByID(*selectedID)->getLocation().x));
+					rasterStringToOverlay("     Y: "+itos(aM->getActorByID(*selectedID)->getLocation().y));
+					rasterStringToOverlay("     Z: "+itos(aM->getActorByID(*selectedID)->getLocation().z));
 					rasterStringToOverlay("     Box ID: "+itos(*selectedID));
+					rasterStringToOverlay("     Units Left: "+dtos(aM->getActorByID(*selectedID)->getMovePointsLeft()));
 				}
 				rasterStringToOverlay("FPS: " + dtos(1000.0/time));
 			}
@@ -368,12 +372,12 @@ void OpenGLRender::drawTerrain()
 				normal2 = crossProduct(n1, n2);
 				normalize(normal2);
 
-				float xTex = .1, zTex = .1, texStep;
+				float xTex = .1, zTex = .1, texStep = .5;
 
-				texStep = 1/8.0;
+				texStep = 1/2.0;
 
-				xTex = (float)(x % 8)/8.3;
-				zTex = (float)(z % 8)/8.3;
+				xTex = (float)(x % 2)/2.2;
+				zTex = (float)(z % 2)/2.2;
 				
 				/*Vector3 color;
 				switch(world.getTerrainObject(x, z))
@@ -539,8 +543,8 @@ void OpenGLRender::perspective()
 	gluPerspective(45.0f, (GLfloat)screenW/(GLfloat)screenH,2.0f,1000.0f);
 
 	double adjust = 0;
-	if(cam->getPosition().y < tM->getHeight(cam->getPosition().x, cam->getPosition().z)+5)
-		cam->adjustHeight(tM->getHeight(cam->getPosition().x, cam->getPosition().z)+5);
+	if(cam->getPosition().y < tM->getHeight(cam->getPosition().x, cam->getPosition().z)+1)
+		cam->adjustHeight(tM->getHeight(cam->getPosition().x, cam->getPosition().z)+1);
 
 	gluLookAt(cam->getPosition().x,cam->getPosition().y,cam->getPosition().z,  
 			  cam->getLookAt().x,cam->getLookAt().y,cam->getLookAt().z,  0,1,0);

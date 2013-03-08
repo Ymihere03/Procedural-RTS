@@ -69,6 +69,11 @@ double Actor::getFacingRads()
 	return radianFacing;
 }
 
+double Actor::getMovePointsLeft()
+{
+	return movePointsLeft;
+}
+
 void Actor::checkLifeTime(int time)
 {
 	lifeTime += time;

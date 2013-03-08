@@ -13,12 +13,13 @@ FILE * pFile;
 //
 //  COMMENTS:
 //
-PerlinNoise::PerlinNoise(double p, int aH)
+PerlinNoise::PerlinNoise(double p, int aH, int b)
 {
+	biome = b;
 	octave = 1;
 	persistence = p;
 	avgHeight = aH;
-	init();
+	init();		// Call to the parent class
 }
 
 //
@@ -37,23 +38,51 @@ void PerlinNoise::create()
 {
 	int frequency = (int)pow(2.0, octave);				//Number of points being used on each axis direction
 	int delta = MAX_WORLD_SIZE/frequency;					//Distance between the points being used
-	double amplitude = (MAX_WORLD_SIZE-1)*pow(persistence, octave);		//Range of values the points can take on from +amplitude to -amplitude
-	double add;
+	double amplitude_range = /**/pow(persistence, octave)*10000;		//Range of height values the points can take on
+	double height;
 
 	for(int z = 0; z < MAX_WORLD_SIZE; z += delta)
 		for(int x = 0; x < MAX_WORLD_SIZE; x += delta)
 		{
-			if(amplitude < 1)
-				amplitude = 1;
-			add = (rand() % (int)amplitude);
+			//Picks a random number inside the height range by modding a large random number by the height range
+			height = (rand() % (int)amplitude_range);
+
+			switch(biome)
+			{
+				
+				case FOREST_MIX:
+				case PLAINS:
+					if(getRandomAsI(100) < 10 && octave < 3)
+						height *= 2;
+					break;
+
+				case LAKES:
+					if(height > amplitude_range/2)
+						height = -height + amplitude_range/2;
+					else
+						height += amplitude_range/2;
+
+					if(getRandomAsI(100) < 5 && octave < 3)
+						height += (getRandomAsD(6)-3)*height;
+					break;
+
+				case MOUNTAINS:
+					
+					//if(height > amplitude_range/2)
+					//	height = -height + amplitude_range/2;
+					//else
+					//	height += amplitude_range/2;
+					
+					//if (height < persistence*10000*.3)
+					//	height = persistence*10000*.1;
+					
+					//break;
+					if(getRandomAsI(100) < 10 && octave < 2)
+						height *= 3;
+					break;
+			}
 			
-			if(add > amplitude/2)
-				add = -add + amplitude/2;
-			else
-				add += amplitude/2;
-			if(getRandomAsI(100) < 5 && octave < 4)
-				add *= 2;
-			*getMap(x,z) = (add/2);
+			*getMap(x,z) = height/1000;
 		}
 
 	//After random points are generated, interpolate the map to fill in all the spaces
@@ -124,7 +153,7 @@ void PerlinNoise::interpolateMap(int delta)
 			*getMap(x, z) = (h5+h6)/2;
 		}
 
-		//Adjust locations of known heights if necessary
+		//Adjust locations of markers if necessary
 		if(z >= highZ)
 		{
 			highZ += delta;

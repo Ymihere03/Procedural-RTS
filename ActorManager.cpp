@@ -8,9 +8,9 @@ ActorManager::ActorManager(TerrainManager *t)
 
 	for(int i = 0; i < 5; i++)
 	{
-		int x = getRandomAsI(100)+200;
-		int z = getRandomAsI(100)+200;
-		Actor * a = new Tank(x, tM->getHeight(x,z), z, 1, 1, 1);
+		int x = getRandomAsI(10)+20;
+		int z = getRandomAsI(10)+20;
+		Actor * a = new Tank(x, tM->getHeight(x,z), z);
 		addToList(a);
 	}
 
@@ -111,7 +111,7 @@ void ActorManager::shoot(int id)
 		{
 			if(target->actor->isReadyToShoot())
 			{
-				Actor * b = new Bullet(target->actor->getLocation(), target->actor->getFacing());
+				Actor * b = new Bullet(target->actor->getTurretLocation(), target->actor->getFacing());
 				addToList(b);
 			}
 		}

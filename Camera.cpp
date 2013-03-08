@@ -18,13 +18,13 @@ Camera::Camera(double ** cTrack)
 	camTrack = cTrack;
 	theta = -PI*3/4;
 	phi = PI*7/16;
-	radius = 20;
+	radius = 10;
 
-	moveSpeed = 100;
-	rotateSpeed = 2;
+	moveSpeed = 20;
+	rotateSpeed = 1;
 	zoomSpeed = 300;
 
-	setLA(200, 0, 200);
+	setLA(10, 0, 10);
 	setY();
 
 	updateLocation();
@@ -71,8 +71,8 @@ void Camera::setFocus(Actor &a)
 {
 	focusTarget = &a;
 	focus = true;
-	if(radius < 20)
-		radius = 20;
+	if(radius < 10)
+		radius = 10;
 	followFocus();
 }
 
@@ -138,19 +138,19 @@ void Camera::setLA(double x, double y, double z)
 
 void Camera::setY()
 {
-	int lowX = 768, lowXi=3, highXi;
-	int lowZ = 768, lowZi=3, highZi;
+	int lowX = (MAX_WORLD_SIZE-1)-(MAX_WORLD_SIZE-1)/32, lowXi=31, highXi;
+	int lowZ = (MAX_WORLD_SIZE-1)-(MAX_WORLD_SIZE-1)/32, lowZi=31, highZi;
 
 	while(lowX > lookAt.x)
 	{
-		lowX -= 256;
+		lowX -= (MAX_WORLD_SIZE-1)/32;
 		lowXi -= 1;
 	}
 	highXi = lowXi+1;
 
 	while(lowZ > lookAt.z)
 	{
-		lowZ -= 256;
+		lowZ -= (MAX_WORLD_SIZE-1)/32;
 		lowZi -= 1;
 	}
 	highZi = lowZi+1;
@@ -161,14 +161,14 @@ void Camera::setY()
 
 	//int i1 = MAX_WORLD_SIZE/
 
-	double h1 = cosineInterpolate(camTrack[lowXi][lowZi], camTrack[highXi][lowZi], (lookAt.x-lowX)/256);
-	double h2 = cosineInterpolate(camTrack[lowXi][highZi], camTrack[highXi][highZi], (lookAt.x-lowX)/256);
+	double h1 = cosineInterpolate(camTrack[lowXi][lowZi], camTrack[highXi][lowZi], (lookAt.x-lowX)/((MAX_WORLD_SIZE-1)/32.0));
+	double h2 = cosineInterpolate(camTrack[lowXi][highZi], camTrack[highXi][highZi], (lookAt.x-lowX)/((MAX_WORLD_SIZE-1)/32.0));
 
-	double h3 = cosineInterpolate(camTrack[lowXi][lowZi], camTrack[lowXi][highZi], (lookAt.z-lowZ)/256);
-	double h4 = cosineInterpolate(camTrack[highXi][lowZi], camTrack[highXi][highZi], (lookAt.z-lowZ)/256);
+	double h3 = cosineInterpolate(camTrack[lowXi][lowZi], camTrack[lowXi][highZi], (lookAt.z-lowZ)/((MAX_WORLD_SIZE-1)/32.0));
+	double h4 = cosineInterpolate(camTrack[highXi][lowZi], camTrack[highXi][highZi], (lookAt.z-lowZ)/((MAX_WORLD_SIZE-1)/32.0));
 
-	double h5 = cosineInterpolate(h1, h2, (lookAt.z-lowZ)/256);
-	double h6 = cosineInterpolate(h3, h4, (lookAt.x-lowX)/256);
+	double h5 = cosineInterpolate(h1, h2, (lookAt.z-lowZ)/((MAX_WORLD_SIZE-1)/32.0));
+	double h6 = cosineInterpolate(h3, h4, (lookAt.x-lowX)/((MAX_WORLD_SIZE-1)/32.0));
 
 	lookAt.y = (h5+h6)/2;
 }
