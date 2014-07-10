@@ -4,22 +4,27 @@
 #pragma comment( lib, "glu32.lib" )
 #pragma comment( lib, "vfw32.lib" )
 
-#include "OpenGLRender.h"
+#include <stdarg.h>
+#include "stdafx.h"
 #include "resource.h"
+
+#include "OpenGLRender.h"
 #include "TerrainManager.h"
 #include "TerrainGen.h"
 #include "Camera.h"
 #include "Actor.h"
 #include "ActorManager.h"
-#include "stdafx.h"
-#include <stdarg.h>
+#include "GameManager.h"
 
 //TerrainGen *world;
 OpenGLRender *glRender;
 TerrainManager *terrainManager;
 //TerrainGen *world;
 ActorManager *actorManager;
+GameManager *gameManager;
 Camera *camera;											//Camera object that holds orientation values for camera
+bool keys[256];											// Keyboard routines
+int selectedID;		//Object ID selected by the user
 
 GLvoid ResizeGLScene(GLsizei, GLsizei);
 GLvoid KillGLWindow(GLvoid);
@@ -61,20 +66,20 @@ typedef struct {									// Contains Information Vital To A Window
 	DWORD				lastTickCount;				// Tick Counter
 } GL_Window;										// GL_Window
 
-GL_Window  *g_window;
-GLuint fontSet;
+GL_Window  window;
+GLuint *fonts;
 //Keys*       g_keys;
 
-void buildFont(GL_Window* window);
+void buildFont(GLuint &list, LPCWSTR fontName, int size);
 //void perspective();
-void TerminateApplication (GL_Window* window);		// Terminate The Application
+void TerminateApplication ();		// Terminate The Application
 
-void ToggleFullscreen (GL_Window* window);			// Toggle Fullscreen / Windowed Mode
+void ToggleFullscreen ();			// Toggle Fullscreen / Windowed Mode
 
 BOOL RegisterWindowClass(Application * application);
 
-BOOL CreateWindowGL(GL_Window* window);
-BOOL DestroyWindowGL(GL_Window* window);
+BOOL CreateWindowGL();
+BOOL DestroyWindowGL();
 
 // These Are The Function You Must Provide
 

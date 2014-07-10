@@ -22,8 +22,8 @@
 TerrainGen::TerrainGen(Vector2 l)
 {
 	location = l;
-	dX = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
-	dZ = (int)(MAX_WORLD_SIZE/pow(2.0, 3));
+	dX = (int)(MAX_WORLD_SIZE/pow(2.0, 2));
+	dZ = (int)(MAX_WORLD_SIZE/pow(2.0, 2));
 
 	//Allocate memory space for the height map
 	terrain = (tile **) malloc ((MAX_WORLD_SIZE) * sizeof(tile *));
@@ -85,7 +85,7 @@ TerrainGen::TerrainGen(Vector2 l)
 	deepWater = waterHeight-3;
 	snowHeight = 20;		//Height for snow to be generated
 
-	biome = LAKES;//getRandomAsI(BIOME_COUNT);
+	biome =  LAKES;//getRandomAsI(BIOME_COUNT);
 	switch(biome)
 	{
 		//Fields with sparse trees
@@ -159,10 +159,6 @@ TerrainGen::TerrainGen(Vector2 l)
 
 	//Make the track for the camera to move along
 	makeCamTrack();
-
-	
-
-	log(dtos(minHeight) +","+dtos(maxHeight)+"\n");
 }
 
 //
@@ -177,7 +173,7 @@ void TerrainGen::modifyTerrainHeight()
 {
 	//Initialize the Perlin Noise map data
 	HeightMap * pMap = new PerlinNoise(persistence, avgHeight, biome);
-	for(int i = 0; i <= 6; i++)
+	for(int i = 0; i <= 5; i++)
 	{
 		pMap->create();
 		combineHeightMapWithTerrain(pMap, i);
@@ -543,8 +539,8 @@ void TerrainGen::thermalErosion()
 void TerrainGen::makeCamTrack()
 {
 	double delta = (MAX_WORLD_SIZE-1)/32.0;	//Distance between the inital points of the track
-	for(int z = 0; z <= MAX_WORLD_SIZE/4; z++)
-		for(int x = 0; x <= MAX_WORLD_SIZE/4; x++)
+	for(int z = 0; z*delta <= MAX_WORLD_SIZE; z++)
+		for(int x = 0; x*delta <= MAX_WORLD_SIZE; x++)
 		{
 			if(getTerrainType(x*delta, z*delta) == WATER)
 				cTrack[x][z] = waterHeight+2;
@@ -705,9 +701,13 @@ double TerrainGen::getSpecificTerrainHeight(double x, double z)
 	setVector(p3, (int)x+1, getTerrainHeight((int)x+1,(int)z+1), (int)z+1);
 	setVector(p4, (int)x, getTerrainHeight((int)x,(int)z+1), (int)z+1);
 
-	if(checkLineIntersect(p2, p3, p1, l1, l2, target) || checkLineIntersect(p4, p3, p1, l1, l2, target))
+
+	bool tri1 = checkLineIntersect(p2, p3, p1, l1, l2, target);
+	bool tri2 = checkLineIntersect(p4, p3, p1, l1, l2, target);
+	if(tri1 || tri2)
 		return target.y;
-	else return -1;
+	else 
+		return -1;
 }
 
 int TerrainGen::interpolateType(int type1, int type2, double x)
@@ -735,6 +735,13 @@ double TerrainGen::getProbabilityByType(int terrainType)
 	default:
 		return -1;
 	}
+}
+
+tile TerrainGen::getTileData(int x, int z) {
+	if(x < 0 || z < 0 || x > MAX_WORLD_SIZE-1 || z > MAX_WORLD_SIZE-1)
+		return terrain[0][0];
+	else
+		return terrain[x][z];
 }
 
 bool TerrainGen::getTileDataFromFile(tile &t, Vector2 chunkLocation, int tileX, int tileZ)

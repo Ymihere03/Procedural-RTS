@@ -5,9 +5,10 @@ class GroundExplosion :
 	public Actor
 {
 public:
-	GroundExplosion(Vector3 &position, Vector3 &facing);
+	GroundExplosion(Vector3 &position, Vector3 &facing, tile tileData);
+	void updateOverlay(int timeElapsed);
 
-	void update(int timeElapsed, double height);
+	void update(int timeElapsed, double height, tile tileData);
 	void draw();
 	bool isDead();
 	void kill();
@@ -22,6 +23,7 @@ private:
 		quadList *next;
 		Vector3 quadLocation,
 			quadDirection;
+		Vector3 color;
 		double velocity;
 		int totalLife, lifeSpan;
 		int id;
@@ -31,6 +33,7 @@ private:
 
 	int reloadTime, coolDown;
 	int nextID;
+	int team;
 
 	void genQuad(quadList *q);
 

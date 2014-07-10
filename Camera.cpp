@@ -22,7 +22,7 @@ Camera::Camera(double ** cTrack)
 
 	moveSpeed = 20;
 	rotateSpeed = 1;
-	zoomSpeed = 300;
+	zoomSpeed = 3;
 
 	setLA(10, 0, 10);
 	setY();
@@ -52,11 +52,13 @@ void Camera::strafe(int forwardDirection, int sideDirection, int timeElapsed)
 	updateLocation();
 }
 
-void Camera::zoom(int zoomDirection, int timeElapsed)
+void Camera::zoom(int zoomDirection)
 { 
-	radius += zoomDirection * zoomSpeed * (timeElapsed/1000.0);
+	radius += zoomDirection * zoomSpeed;
 	if(radius < 1)
 		radius = 1;
+	else if(focus && radius < 10)
+		radius = 10;
 
 	updateLocation();
 }
@@ -85,7 +87,7 @@ void Camera::followFocus()
 void Camera::updateLocation()
 {
 	double x, y, z, xMod, yMod, zMod;
-
+	log("Cam Radius: "+dtos(radius)+"\n");
 	if(hasFocus())
 	{
 		xMod = focusTarget->getLocation().x;
@@ -155,11 +157,6 @@ void Camera::setY()
 	}
 	highZi = lowZi+1;
 
-
-	//int low
-	//if(lowX == 0)
-
-	//int i1 = MAX_WORLD_SIZE/
 
 	double h1 = cosineInterpolate(camTrack[lowXi][lowZi], camTrack[highXi][lowZi], (lookAt.x-lowX)/((MAX_WORLD_SIZE-1)/32.0));
 	double h2 = cosineInterpolate(camTrack[lowXi][highZi], camTrack[highXi][highZi], (lookAt.x-lowX)/((MAX_WORLD_SIZE-1)/32.0));

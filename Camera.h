@@ -8,7 +8,7 @@ public:
 	
 	Camera(double ** cTrack);
 	void strafe(int forwardDirection, int sideDirection, int timeElapsed);
-	void zoom(int zoomDirection, int timeElapsed);
+	void zoom(int zoomDirection);
 	void rotate(int rotateDirection, int timeElapsed);
 	void followFocus();
 	

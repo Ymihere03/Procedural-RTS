@@ -27,6 +27,16 @@
 
 //}
 
+void Actor::setID(int i)
+{
+	id = i;
+}
+
+int Actor::getID()
+{
+	return id;
+}
+
 void Actor::setLocation(double x, double y, double z)
 {
 	setVector(location, x, y, z);
@@ -39,19 +49,21 @@ void Actor::setLocation(Vector3 &v)
 	setHitBox();
 }
 
-void Actor::unselect()
+void Actor::setVisible(bool target)
 {
-	selected = false;
+	visible = target;
 }
 
-void Actor::setSelected(bool target)
+void Actor::setMaxVisionDistance(int target)
 {
-	selected = target;
+	maxVisionDistance = target;
 }
 
 bool Actor::isSelected()
 {
-	return selected;
+	if(id == selectedID)
+		return true;
+	return false;
 }
 
 Vector3 Actor::getLocation()
@@ -72,6 +84,31 @@ double Actor::getFacingRads()
 double Actor::getMovePointsLeft()
 {
 	return movePointsLeft;
+}
+
+void Actor::resetMovePoints()
+{
+	movePointsLeft = totalMovePoints;
+}
+
+int Actor::getHealth()
+{
+	return health;
+}
+
+int Actor::getTeam()
+{
+	return team;
+}
+
+bool Actor::isVisible()
+{
+	return visible;
+}
+
+int Actor::getMaxVisionDistance()
+{
+	return maxVisionDistance;
 }
 
 void Actor::checkLifeTime(int time)
@@ -186,6 +223,7 @@ void Actor::loadObjModel()
 
 	fclose(pFile);*/
 }
+
 
 Actor::~Actor(void)
 {

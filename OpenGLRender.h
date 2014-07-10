@@ -7,34 +7,33 @@
 #include "Camera.h"
 #include "ActorManager.h"
 #include "TerrainManager.h"
+#include "GameManager.h"
 #include "Simple OpenGL Image Library\src\SOIL.h"
 
 class OpenGLRender
 {
 public:
-	bool keys[256];											// Keyboard routines
 	Vector3 target;											// Location of user clicks
 	int clickWait;											//Time to wait before another click is accepted
 	int clickWaitTotal;								//Total time to wait before another click is accepted
-
 
 	//Object variables
 	Camera *cam;
 	ActorManager *aM;
 	TerrainManager *tM;
+	GameManager *gM;
 	
 	BOOL initialize (Vector2* windowSize);					// Performs All Your Initialization
 	BOOL update (DWORD milliseconds, int mouseX, int mouseY);// Perform Motion Updates
 	void perspective();
 	int drawGLScene();
 
-	OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GLuint &fSet, int &sID);
+	OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GameManager &g, GLuint &fSet);
 	~OpenGLRender(void);
 
 private:
 	int screenH, screenW;									//User screen width and height
 	int mouseX, mouseY;										//Mouse location
-	int * selectedID;
 
 	//Debug display variables
 	bool debug, debugP;
@@ -55,7 +54,8 @@ private:
 	
 	
 	void overlayDisplay();
-	void rasterStringToOverlay(string str);
+	void rasterStringToOverlay(int type, string str);
+	void rasterStringTo3DOverlay(Vector3 location, int type, string *str);
 	
 	void fastDrawTerrain();
 	void drawTerrain();
@@ -67,6 +67,6 @@ private:
 	
 	void loadTexture(string path, int index);
 	void loadTextures();
-	void glPrint(const char *fmt);
+	void glPrint(int type, const char *fmt);
 };
 

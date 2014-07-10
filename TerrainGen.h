@@ -6,15 +6,6 @@
 class TerrainGen
 {
 public:
-	struct tile {
-		float x, y, z;					//Position coordinates
-		int type;						//Type of terrain
-		float gradient;					//Slope
-		Vector3 normal1, normal2;		//Normal Vector coordinates
-		Vector3 texCoord1, texCoord2;	//Texture coordinates
-	};
-
-			
 
 	double ** cTrack;		//Height values for the camera track
 	tile ** terrain;		//Data storage for terrain
@@ -30,6 +21,7 @@ public:
 	double getSpecificTerrainHeight(double x, double z);
 	Vector3 getN1(int x, int z);
 	Vector3 getN2(int x, int z);
+	tile getTileData(int x, int z);
 	bool getTileDataFromFile(tile &t, Vector2 chunkLocation, int tileX, int tileZ);
 
 	double ** getCamTrack();

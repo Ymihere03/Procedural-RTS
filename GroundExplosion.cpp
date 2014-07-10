@@ -1,14 +1,17 @@
 #include "GroundExplosion.h"
 
-GroundExplosion::GroundExplosion(Vector3 &position, Vector3 &f)
+GroundExplosion::GroundExplosion(Vector3 &position, Vector3 &f, tile tileData)
 {
 	type = "Emitter";
 	dead = false;
+	visible = true;
 	nextID = 0;
 	velocity = 3;
 	lifeTime = 0;
 	totalLifeTime = 1500;
 	root = NULL;
+	currentTile = tileData;
+	maxVisionDistance = 0;
 
 	setVector(location, position.x, position.y, position.z);
 	setVector(facing, f.x, f.y, f.z);
@@ -18,8 +21,9 @@ GroundExplosion::GroundExplosion(Vector3 &position, Vector3 &f)
 		addQuad();
 }
 
-void GroundExplosion::update(int timeElapsed, double height)
+void GroundExplosion::update(int timeElapsed, double height, tile tileData)
 {
+	visible = true;
 	double newTime = timeElapsed/1000.0;
 
 	quadList * target = root;
@@ -48,11 +52,9 @@ void GroundExplosion::draw()
 {
 	quadList * target = root;
 
-	glBindTexture( GL_TEXTURE_2D, 7);
-
 	while(target != NULL)
 	{
-		glColor3f(.5,.15,.05);
+		glColor4f(target->color.x,target->color.y,target->color.z,1-((double)lifeTime)/((double)totalLifeTime));
 		glPointSize(6);
 		glBegin(GL_POINTS);
 			glVertex3f(target->quadLocation.x, target->quadLocation.y, target->quadLocation.z);
@@ -71,7 +73,11 @@ void GroundExplosion::draw()
 		
 		target = target->next;
 	}
-	glBindTexture( GL_TEXTURE_2D, 0);
+}
+
+void GroundExplosion::updateOverlay(int timeElapsed)
+{
+
 }
 
 void GroundExplosion::kill()
@@ -113,6 +119,36 @@ void GroundExplosion::genQuad(quadList *q)
 	q->id = nextID;
 	q->velocity = getDecimalRandom(velocity);
 	q->totalLife = getRandomAsI(totalLifeTime);
+	switch(currentTile.type) {
+		case FOREST: 
+			if (choose(.8))
+				setVector(q->color,.05,.4,.05);	//Green
+			else
+				setVector(q->color,.4,.25,.05); //Brown
+			break;
+
+		case FIELD: 
+			if(choose(.8))
+				setVector(q->color,.15,.5,.05); //Green
+			else
+				setVector(q->color,.5,.4,.05);	//Brown
+			break;
+
+		case SAND: 
+			setVector(q->color,1,.87,.42);
+			break;
+
+		case WATER: 
+			setVector(q->color,0,.3,1);
+			break;
+
+		case SNOW: 
+			setVector(q->color,1,1,1);
+			break;
+
+		default: 
+			setVector(q->color,.5,.15,.05);
+		}
 
 	setVector(q->quadDirection, 
 		f.x*q->velocity, 

@@ -1,11 +1,12 @@
 #include "OpenGLRender.h"
 
 
-OpenGLRender::OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GLuint &fSet, int &sID)
+OpenGLRender::OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GameManager &g, GLuint &fSet)
 {
 	fontSet = &fSet;
 	aM = &a;
 	tM = &t;
+	gM = &g;
 	active=TRUE;										// Flag sets window to be active by default
 	fullscreen=TRUE;									// Flag sets window to be fullscreen by default
 	light = true;
@@ -18,12 +19,9 @@ OpenGLRender::OpenGLRender(Camera &c, ActorManager &a, TerrainManager &t, GLuint
 	drawY=0;								//Location to draw text on the screen
 	overlayLineCount=0;
 	fpsUpdate = 0;
-	selectedID = &sID;
+	//selectedID = &sID;
 	clickWait = 0;
 	clickWaitTotal = 300;
-
-	for(int i = 0; i < 256; i++)
-		keys[i] = false;
 }
 
 
@@ -99,9 +97,9 @@ int OpenGLRender::drawGLScene()
 	glBindTexture( GL_TEXTURE_2D, 0);
 
 	//Display the movement path that is stored by the selected object
-	if(*selectedID != -1)
+	if(selectedID != -1)
 	{
-		nodePath *next = aM->getActorByID(*selectedID)->getPathRoot();
+		nodePath *next = aM->getActorByID(selectedID)->getPathRoot();
 		while(next != NULL)
 		{
 			glColor3f(1,1,0);
@@ -173,6 +171,22 @@ int OpenGLRender::drawGLScene()
 	//glmDraw(testCube, GLM_SMOOTH| GLM_TEXTURE); 
 	//---DEBUG DISPLAY
 
+	//Draw object overlays
+	ActorManager::ActorList *target = aM->root;
+	while(target != NULL)
+	{
+		OverlayData *overlay = target->actor->getOverlay();
+				
+		while(overlay != NULL)
+		{
+			int asdf = overlay->text->size();
+			if(overlay->text->size() > 0)
+				rasterStringTo3DOverlay(overlay->location, overlay->fontSet, overlay->text);
+			overlay = overlay->next;
+		}
+		target = target->next;
+	}
+
 	checkLighting(true);
 	aM->drawObjects();
 	overlayDisplay();
@@ -202,29 +216,33 @@ void OpenGLRender::overlayDisplay()
 
 			//Lighting should not affect objects in the overlay
 			checkLighting(false);
-			
+			glColor3f(1.0f,1.0f,1.0f);
 			//Only display debug text if user turned it on
 			if(!debug)
 			{
 				//glTranslatef(cam.getPosX(),cam.getPosY()-1,cam.getPosZ()+1);
 				//glTranslatef(0,0,0);
-				glColor3f(1.0f,1.0f,1.0f);
 
 				overlayLineCount = 0;
-				rasterStringToOverlay("("+itos(cam->getLookAt().x)+","+ dtos(cam->getLookAt().y)+","+ itos(cam->getLookAt().z)+")");
-				rasterStringToOverlay(itos(mouseX) + "," + itos(mouseY));
-				if(*selectedID != -1)
+				rasterStringToOverlay(0, "("+itos(cam->getLookAt().x)+","+ dtos(cam->getLookAt().y)+","+ itos(cam->getLookAt().z)+")");
+				rasterStringToOverlay(0, itos(mouseX) + "," + itos(mouseY));
+				rasterStringToOverlay(0, "Viewing team " + itos(gM->getActiveTeam()));
+				if(selectedID != -1)
 				{
-					rasterStringToOverlay("Box Data:");
-					rasterStringToOverlay("     X: "+itos(aM->getActorByID(*selectedID)->getLocation().x));
-					rasterStringToOverlay("     Y: "+itos(aM->getActorByID(*selectedID)->getLocation().y));
-					rasterStringToOverlay("     Z: "+itos(aM->getActorByID(*selectedID)->getLocation().z));
-					rasterStringToOverlay("     Box ID: "+itos(*selectedID));
-					rasterStringToOverlay("     Units Left: "+dtos(aM->getActorByID(*selectedID)->getMovePointsLeft()));
-				}
-				rasterStringToOverlay("FPS: " + dtos(1000.0/time));
-			}
+					rasterStringToOverlay(0, "Box Data:");
+					rasterStringToOverlay(0, "     X: "+itos(aM->getActorByID(selectedID)->getLocation().x));
+					rasterStringToOverlay(0, "     Y: "+itos(aM->getActorByID(selectedID)->getLocation().y));
+					rasterStringToOverlay(0, "     Z: "+itos(aM->getActorByID(selectedID)->getLocation().z));
+					rasterStringToOverlay(0, "     Box ID: "+itos(selectedID));
+					rasterStringToOverlay(0, "     Team: "+itos(aM->getActorByID(selectedID)->getTeam()));
+					rasterStringToOverlay(0, "     Units Left: "+dtos(aM->getActorByID(selectedID)->getMovePointsLeft()));
+					rasterStringToOverlay(0, "     Terrain: "+aM->getActorByID(selectedID)->getTerrainType());
+					rasterStringToOverlay(0, "     Health: "+itos(aM->getActorByID(selectedID)->getHealth()));
 
+				}
+				rasterStringToOverlay(0, "FPS: " + dtos(1000.0/time));
+			}
+			glLoadIdentity();
 			//Draw the cursor
 			int xTex = 25, yTex = 59;
 			glBindTexture(GL_TEXTURE_2D, testTex[cursorTex]);
@@ -249,13 +267,19 @@ void OpenGLRender::overlayDisplay()
 
 
 //Utility function to make displaying lines of text on the overlay less messy
-void OpenGLRender::rasterStringToOverlay(string str)
+void OpenGLRender::rasterStringToOverlay(int type, string str)
 {
 	glRasterPos2f(1,screenH-16-(overlayLineCount*16));
-	const char *c = str.c_str();//new char(str.size()+1);
-	//strcpy (c, str.c_str());
-	glPrint(c);
+	const char *c = str.c_str();
+	glPrint(type, c);
 	overlayLineCount++;
+}
+
+void OpenGLRender::rasterStringTo3DOverlay(Vector3 location, int type, string *str)
+{
+	glRasterPos3f(location.x, location.y, location.z);
+	const char *c = str->c_str();
+	glPrint(type, c);
 }
 
 void OpenGLRender::fastDrawTerrain()
@@ -499,8 +523,6 @@ BOOL OpenGLRender::update(DWORD milliseconds, int mX, int mY)
 	if(keys['E'])
 		cam->rotate(1, milliseconds);
 
-	if(keys[VK_SPACE])
-		aM->shoot(*selectedID);
 
 	//if (g_keys->keyDown[VK_F1])									// Is F1 Being Pressed?
 		//ToggleFullscreen (g_window);							// Toggle Fullscreen Mode
@@ -564,16 +586,16 @@ void OpenGLRender::toggleLighting(bool lighting)
 		lp = FALSE;
 }
 
-void OpenGLRender::toggleDebug(bool debug)
+void OpenGLRender::toggleDebug(bool debugFlag)
 {
 	//Toggle the debug printing to the screen
 	//Toggles at every key press
-	if(debug && !debugP)
+	if(debugFlag && !debugP)
 	{
 		debugP = TRUE;
 		debug = !debug;
 	}
-	if(!debug)
+	if(!debugFlag)
 		debugP = FALSE;
 }
 
@@ -619,7 +641,7 @@ void OpenGLRender::loadTextures()
 //
 //  COMMENTS:
 //
-void OpenGLRender::glPrint(const char *fmt)
+void OpenGLRender::glPrint(int type, const char *fmt)
 {
 	char text[256];
 	va_list ap;
@@ -631,7 +653,7 @@ void OpenGLRender::glPrint(const char *fmt)
 		vsprintf_s(text, fmt, ap);
 	va_end(ap);
 
-	glListBase(*fontSet - 32);
+	glListBase(fontSet[type] - 32);
 	glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);
 	glPopAttrib();
 }

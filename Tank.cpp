@@ -1,36 +1,46 @@
 #include "Tank.h"
 
-
-Tank::Tank(double x, double y, double z)
+/*
+Tank::Tank(double x, double y, double z, int t)
 {
 	//Initialize default variables
-	double xSize=.3;
-	double ySize=.3;
+	double xSize=.4;
+	double ySize=.2;
 	double zSize=.3;
 	type = "Tank";
-	selected = false;
 	moving = false;
 	dead = false;
-	velocity = 1;		//Base movement speed
-	turnSpeed = .5;		//Base turning speed
+	damageFlag = false;
+	visible = true;
+	team = t;
+	maxVisionDistance = 15;	//Sight Radius
+	velocity = 1.0;		//Base movement speed
+	turnSpeed = .7;		//Base turning speed
 	radianFacing = 0;	//Direction to face in radians
 	direction = 1;		//Moving forward
+	maxClipSize = 3;	//Number of shots that can be made in a turn
+	ammoCount = 0;		//Number of shots left for the turn
 	reloadTime = 300;	//Time to ready the gun to fire
 	cooldown = 0;		//Current wait time to shoot
 	lifeTime = 0;		//Time the object has been alive
 	totalLifeTime = -1;	//Length of time to stay alive
-	totalMovePoints = 15;	//Object can move this distance
+	maxHealth = 15;		//Total number of health points
+	health = maxHealth;	//Current health points
+	totalMovePoints = 5;	//Object can move this distance
 	movePointsLeft = totalMovePoints;	//Unconsumed move points
 	uphillPenalty = 1;	//Modifier to consumed move units when moving uphill
 	downhillBonus = -.5;	//Modifier to consumed move units when moving downhill
 	setVector(hitBoxSize, xSize,ySize,zSize);
+	overlayRoot = NULL;
 	
 	setLocation(x, y, z);
 	setVector(destination, location.x, location.y, location.z);
 
 
 	//Turret data
-	turretAngle = .3;
+	turretAngle = 0;
+	turretMaxAngle = PI/16.0;
+	turretMinAngle = -PI/64.0;
 	turretLength = .5;
 	turretFacingRadians = radianFacing;
 	setVector(turretLocation, location.x+turretLength*cos(turretAngle)*cos(turretFacingRadians), 
@@ -40,6 +50,17 @@ Tank::Tank(double x, double y, double z)
 	normalize(facing);
 
 	pathRoot = NULL;
+	//Allocate memory for tracer points
+	tracerRoot = (nodePath3d *) malloc(sizeof(nodePath3d));
+	tracerRoot->nodeData = turretLocation;
+	nodePath3d *current = tracerRoot;
+	for(int i = 0; i < 10; i++)
+	{
+		current->next = (nodePath3d *) malloc(sizeof(nodePath3d));
+		current = current->next;
+		current->nodeData = turretLocation;
+	}
+	current->next = NULL;
 
 	char *filepath = "data/models/test.obj";
 	model = glmReadOBJ(filepath, 0);
@@ -52,7 +73,7 @@ Tank::Tank(double x, double y, double z)
 	//glmLinearTexture(model);
 
 }
-
+*/
 //
 //  FUNCTION: setHitbox()
 //
@@ -146,8 +167,11 @@ void Tank::resetNodePath()
 //  COMMENTS: This method is part of the main program loop and is called before every frame
 //
 
-void Tank::update(int timeElapsed, double height)
+void Tank::update(int timeElapsed, double height, tile tileData)
 {
+	//Record the data of the terrain the unit is on
+	currentTile = tileData;
+
 	//Update the cooldown timer
 	cooldown -= timeElapsed;
 
@@ -166,7 +190,7 @@ void Tank::update(int timeElapsed, double height)
 		//If the destination is within a certain distance of the actor, then it will drive in circles
 		//around the destination without ever reaching it. This will cause the actor to turn first
 		//before trying to move forward.
-		if(sqrt(pow(abs(location.x - destination.x),2) + pow(abs(location.z - destination.z),2)) < 20)
+		if(sqrt(pow(abs(location.x - destination.x),2) + pow(abs(location.z - destination.z),2)) < 10)
 			direction = 0;
 	
 
@@ -194,8 +218,8 @@ void Tank::update(int timeElapsed, double height)
 			direction = 1;
 			//Final check after both turn and movement adjustments have been applied.
 			//If this is true then the actor has fully reached its destination.
-			if(abs(location.x - destination.x) < 1 &&
-			abs(location.z - destination.z) < 1) {
+			if(abs(location.x - destination.x) < .1 &&
+			abs(location.z - destination.z) < .1) {
 				//If there is a movement point queued up then set it as the next destination
 				if(pathRoot) {
 					setMoveTarget(pathRoot->nodeData);
@@ -212,6 +236,7 @@ void Tank::update(int timeElapsed, double height)
 			turn(1, elapsedSeconds, targetRadians);		//Right turn
 		else if(targetRadians < 0)
 			turn(-1, elapsedSeconds, targetRadians);		//Left turn
+		setLocation(location.x, height, location.z);
 
 		//Driving - Forward movement
 		if(moving && movePointsLeft > 0) {
@@ -223,11 +248,12 @@ void Tank::update(int timeElapsed, double height)
 		}
 
 	}
+
 	setVector(turretLocation, location.x+turretLength*cos(turretAngle)*cos(turretFacingRadians), 
 		location.y+hitBoxSize.y+turretLength*sin(turretAngle), location.z+turretLength*cos(turretAngle)*sin(turretFacingRadians));
 	checkLifeTime(timeElapsed);
 	makeTracer();
-	
+	updateOverlay(timeElapsed);
 }
 
 //
@@ -267,6 +293,19 @@ void Tank::turn(int direction, double elapsedSeconds, double targetRadians)
 		turretFacingRadians -= 2*PI;
 	else if(turretFacingRadians < -PI)
 		turretFacingRadians += 2*PI;
+
+	//Convert the radian value to a vector (x,z)
+	setVector(facing, cos(radianFacing), sin(turretAngle), sin(radianFacing));
+	normalize(facing);
+}
+
+void Tank::turretAngleAdjust(double adjust)
+{
+	turretAngle += adjust;
+	if(turretAngle > turretMaxAngle)
+		turretAngle = turretMaxAngle;
+	if(turretAngle < turretMinAngle)
+		turretAngle = turretMinAngle;
 
 	//Convert the radian value to a vector (x,z)
 	setVector(facing, cos(radianFacing), sin(turretAngle), sin(radianFacing));
@@ -323,24 +362,20 @@ bool Tank::checkHitBox(Vector3 &ray1, Vector3 &ray2)
 void Tank::makeTracer() 
 {
 	//Reset the list
-	tracerRoot = (nodePath3d *) malloc(sizeof(nodePath3d));
 	tracerRoot->nodeData = getTurretLocation();
-	tracerRoot->next = NULL;
 	nodePath3d *current = tracerRoot;
 	Vector3 direction, initialLocation;
 
 	double time = 0;
 	setVector(initialLocation, turretLocation.x, turretLocation.y, turretLocation.z);
-	setVector(direction, facing.x*30, facing.y*30, facing.z*30);
-	for(int i = 0; i < 100; i++)
+	setVector(direction, facing.x*50, facing.y*50, facing.z*50);
+	for(int i = 0; i < 50; i++)
 	{
-		current->next = (nodePath3d *) malloc(sizeof(nodePath3d));
 		setVector(current->next->nodeData, initialLocation.x+direction.x*time, initialLocation.y+direction.y*time + GRAVITY*pow(time, 2)*.5, initialLocation.z+direction.z*time);
 		
 		//Factor in gravity to make a new downward velocity
 		setVector(direction, direction.x, direction.y, direction.z);
 
-		current->next->next = NULL;
 		nodePath3d intersect;
 		//Check if the tracer segment has crossed the ground
 		/*if(!checkLineIntersect(,,,,,intersect)	//TEMP needs data for function
@@ -381,6 +416,39 @@ void Tank::calcMovesSpent(Vector3 oldLocation, Vector3 newLocation)
 		movePointsLeft = 0;
 }
 
+void Tank::takeDamage(int damage)
+{
+	health -= damage;
+	if(health <= 0)
+		kill();
+	damageFlag = 10;
+	string *text = new string;
+	text->assign("-"+itos(damage));
+	
+	Vector3 start;
+	setVector(start, location.x+getDecimalRandom(1)-.5, location.y+.2, location.z+getDecimalRandom(1)-.5);
+
+	Vector3 color;
+	setVector(color, 1,1,1);
+	addOverlayData(start, color, 1, text, 4000);
+}
+
+bool Tank::shoot()
+{
+	ammoCount -= 1;
+	if(ammoCount < 0)
+	{
+		ammoCount = 0;
+		return false;		//Not enough ammo to fire
+	}
+	return true;			//Fire attempt was successful
+}
+
+void Tank::reloadClip()
+{
+	ammoCount = maxClipSize;
+}
+
 //
 //  FUNCTION: draw()
 //
@@ -392,7 +460,13 @@ void Tank::calcMovesSpent(Vector3 oldLocation, Vector3 newLocation)
 void Tank::draw()
 {
 	//Tank Model
-	glColor3f(1,0,0);
+	if(team == 1)
+		glColor3f(1,damageFlag/10.0,damageFlag/10.0);
+	else if(team == 2)
+		glColor3f(damageFlag/10.0,damageFlag/10.0,1);
+	damageFlag--;
+	if(damageFlag < 0)
+		damageFlag = 0;
 	glTranslated(location.x, location.y, location.z);
 	glRotated(180 - radianFacing*180/PI,0,1,0);
 	//glmDraw(model, GLM_SMOOTH|GLM_TEXTURE);
@@ -438,8 +512,9 @@ void Tank::draw()
 	glEnd();
 
 	//Draws the hitbox outline of the object is selected
-	if(selected)
+	if(isSelected())
 	{
+		/*
 		glColor3f(0,1,0);
 		glBegin(GL_LINES);
 			glVertex3f(hitBox[0].x,hitBox[0].y,hitBox[0].z);
@@ -478,7 +553,7 @@ void Tank::draw()
 			glVertex3f(hitBox[7].x,hitBox[7].y,hitBox[7].z);
 			glVertex3f(hitBox[1].x,hitBox[1].y,hitBox[1].z);
 		glEnd();
-
+		*/
 		//Draw the tracer
 		glColor3f(1,1,1);
 			nodePath3d *target = tracerRoot;
@@ -501,6 +576,67 @@ void Tank::draw()
 	glLoadIdentity();
 }
 
+void Tank::updateOverlay(int timeElapsed)
+{
+	OverlayData *target = overlayRoot;
+	if(overlayRoot)
+		if(overlayRoot->lifeTime == 0) {
+			target = overlayRoot->next;
+			overlayRoot = target;
+		}
+	while(target != NULL)
+	{
+		if(target->lifeTime != -1)
+		{
+			if(target->lifeTime - timeElapsed <= 0)
+				target->lifeTime = 0;
+			else
+				target->lifeTime -= timeElapsed;
+			target->location.y += .01;
+		}
+		target = target->next;
+	}
+}
+
+void Tank::addOverlayData(Vector3 location, Vector3 color, int fontSet, string *text, int lifeTime)
+{
+	if(!overlayRoot)
+	{
+		overlayRoot = (OverlayData *) malloc(sizeof(OverlayData));
+		overlayRoot->location = location;
+		overlayRoot->color = color;
+		overlayRoot->fontSet = fontSet;
+		overlayRoot->text = text;
+		overlayRoot->lifeTime = lifeTime;
+
+		overlayRoot->next = NULL;
+	}
+	else
+	{
+		OverlayData * target = overlayRoot;
+
+		while(target->next != NULL)
+			target = target->next;
+
+		target->next = (OverlayData *) malloc(sizeof(OverlayData));
+		target = target->next;
+		target->location = location;
+		target->color = color;
+		target->fontSet = fontSet;
+		target->text = text;
+		target->lifeTime = lifeTime;
+
+		target->next = NULL;
+	}
+}
+
+OverlayData* Tank::getOverlay()
+{
+	if(isVisible())
+		return overlayRoot;
+	return NULL;
+}
+
 Vector3 Tank::getTurretLocation()
 {
 	return turretLocation;
@@ -511,6 +647,17 @@ double Tank::getTurretAngle()
 	return turretAngle;
 }
 
+string Tank::getTerrainType()
+{
+	switch(currentTile.type)
+	{
+	case FIELD: return "Field";
+	case FOREST: return "Forest";
+	case SAND: return "Sand";
+	case WATER: return "Water";
+	case SNOW: return "Snow";
+	}
+}
 
 void Tank::kill()
 {

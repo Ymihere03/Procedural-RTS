@@ -22,7 +22,6 @@ static BOOL g_createFullScreen = TRUE;							// If TRUE, Then Create Fullscreen
 
 int	mouse_x, mouse_y;									// The Current Position Of The Mouse
 int newMouseX = -1;
-int selectedID = -1;
 int timeElapsed;
 
 // OpenGL variables
@@ -32,24 +31,6 @@ HDC  hDC=NULL;											// Private GDI Device Context
 HWND hWnd=NULL;											// Holds the Window Handle
 int screenH, screenW;
 Vector3 clickRay1, clickRay2;
-/*bool keys[256];											// Keyboard routines
-bool active=TRUE;										// Flag sets window to be active by default
-bool fullscreen=TRUE;									// Flag sets window to be fullscreen by default
-bool light = true, lp, fp;
-
-Camera *camera;		//Camera object that holds orientation values for camera
-int screenH, screenW;									//User screen width and height
-GLuint testTex[6];										//Array for holding OpenGL textures
-int cursorTex;
-GLuint terrainList;										//Terrain Display List
-//Actor testCube = Actor("data/models/Will this work.obj");
-//Actor *testBox[2];*/
-
-
-//Debug display variables
-//bool debug = FALSE, debugP;
-//double drawX=0, drawY=0;								//Location to draw text on the screen
-//int overlayLineCount = 0;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -80,7 +61,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	LoadString(hInstance, IDC_GLTEST, szWindowClass, MAX_LOADSTRING);
 
 	Application			application;									// Application Structure
-	GL_Window			window;											// Window Structure
+	//GL_Window			window;											// Window Structure
 	BOOL				isMessagePumpActive;							// Message Pump Active?
 	MSG					msg;											// Window Message Structure
 	DWORD				tickCount;										// Used For The Tick Counter
@@ -97,12 +78,21 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	FILE * pFile = fopen("log.txt", "w");
 	fclose(pFile);
 
+	//Enable memory leak debugging
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
+	fonts = (GLuint *) malloc (2*sizeof(GLuint));
+	
 	//Initialize Core program components
 	terrainManager = new TerrainManager();
 	actorManager = new ActorManager(terrainManager);
 	camera = new Camera(terrainManager->root->world->getCamTrack());
-	glRender = new OpenGLRender(*camera, *actorManager, *terrainManager, fontSet, selectedID);
+	gameManager = new GameManager(actorManager, terrainManager);
+	glRender = new OpenGLRender(*camera, *actorManager, *terrainManager, *gameManager, *fonts);
 	
+	selectedID = -1;
+	for(int i = 0; i < 256; i++)
+		keys[i] = false;
 
 	// Fill Out Window
 	ZeroMemory (&window, sizeof (GL_Window));							// Make Sure Memory Is Zeroed
@@ -134,7 +124,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	// Create A Window
 		//window.init.isFullScreen = g_createFullScreen;					// Set Init Param Of Window Creation To Fullscreen?
-		if (CreateWindowGL (&window) == TRUE)							// Was Window Creation Successful?
+		if (CreateWindowGL () == TRUE)							// Was Window Creation Successful?
 		{
 			ReshapeGL(window.init.width, window.init.height);
 			Vector2 size;
@@ -142,11 +132,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			if (glRender->initialize (&size) == FALSE)					// Call User Intialization
 			{
 				// Failure
-				TerminateApplication(&window);							// Close Window, This Will Handle The Shutdown
+				TerminateApplication();							// Close Window, This Will Handle The Shutdown
 			}
 			else
 			{
-				buildFont(&window);
+				buildFont(fonts[0], L"Courier New", 14);
+				buildFont(fonts[1], L"Times", 14);
 				isMessagePumpActive = TRUE;
 				while (isMessagePumpActive == TRUE)						// While The Message Pump Is Active
 				{
@@ -174,12 +165,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 							//----  Main Process Loop  ----//
 							tickCount = GetTickCount ();				// Get The Tick Count
 							if(!glRender->update (tickCount - window.lastTickCount, mouse_x, mouse_y))	// Update The Counter
-								TerminateApplication(&window);
+								TerminateApplication();
 							timeElapsed = tickCount - window.lastTickCount;
 							window.lastTickCount = tickCount;			// Set Last Count To Current Count
 							
 							actorManager->updateObjects(timeElapsed);
-							glRender->drawGLScene();									// Draw Our Scene
+							gameManager->update();
+							glRender->drawGLScene();									// Draw the Scene
 							
 							SwapBuffers (window.hDC);					// Swap Buffers (Double Buffering)
 						}
@@ -189,7 +181,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			// Application Is Finished
 			//Deinitialize ();											// User Defined DeInitialization
 
-			DestroyWindowGL (&window);									// Destroy The Active Window
+			DestroyWindowGL ();									// Destroy The Active Window
 		}
 		else															// If Window Creation Failed
 		{
@@ -210,15 +202,15 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 //--------------------------------------------------------------------------------------
 
 
-void TerminateApplication (GL_Window* window)							// Terminate The Application
+void TerminateApplication ()							// Terminate The Application
 {
-	PostMessage (window->hWnd, WM_QUIT, 0, 0);							// Send A WM_QUIT Message
+	PostMessage (window.hWnd, WM_QUIT, 0, 0);							// Send A WM_QUIT Message
 	g_isProgramLooping = FALSE;											// Stop Looping Of The Program
 }
 
-void ToggleFullscreen (GL_Window* window)								// Toggle Fullscreen/Windowed
+void ToggleFullscreen ()								// Toggle Fullscreen/Windowed
 {
-	PostMessage (window->hWnd, WM_TOGGLEFULLSCREEN, 0, 0);				// Send A WM_TOGGLEFULLSCREEN Message
+	PostMessage (window.hWnd, WM_TOGGLEFULLSCREEN, 0, 0);				// Send A WM_TOGGLEFULLSCREEN Message
 }
 
 void ReshapeGL (int width, int height)									// Reshape The Window When It's Moved Or Resized
@@ -271,7 +263,7 @@ BOOL RegisterWindowClass (Application* application)						// Register A Window Cl
 	return TRUE;														// Return True (Success)
 }
 
-BOOL CreateWindowGL (GL_Window* window)			// This Code Creates Our OpenGL Window
+BOOL CreateWindowGL ()			// This Code Creates Our OpenGL Window
 {
 	DWORD windowStyle = WS_OVERLAPPEDWINDOW;							// Define Our Window Style
 	DWORD windowExtendedStyle = WS_EX_APPWINDOW;						// Define The Window's Extended Style
@@ -285,7 +277,7 @@ BOOL CreateWindowGL (GL_Window* window)			// This Code Creates Our OpenGL Window
 		PFD_SUPPORT_OPENGL |											// Format Must Support OpenGL
 		PFD_DOUBLEBUFFER,												// Must Support Double Buffering
 		PFD_TYPE_RGBA,													// Request An RGBA Format
-		window->init.bitsPerPixel,										// Select Our Color Depth
+		window.init.bitsPerPixel,										// Select Our Color Depth
 		0, 0, 0, 0, 0, 0,												// Color Bits Ignored
 		0,																// No Alpha Buffer
 		0,																// Shift Bit Ignored
@@ -299,17 +291,17 @@ BOOL CreateWindowGL (GL_Window* window)			// This Code Creates Our OpenGL Window
 		0, 0, 0															// Layer Masks Ignored
 	};
 
-	RECT windowRect = {0, 0, window->init.width, window->init.height};	// Define Our Window Coordinates
+	RECT windowRect = {0, 0, window.init.width, window.init.height};	// Define Our Window Coordinates
 
 	GLuint PixelFormat;													// Will Hold The Selected Pixel Format
 
-	if (window->init.isFullScreen == TRUE)								// Fullscreen Requested, Try Changing Video Modes
+	if (window.init.isFullScreen == TRUE)								// Fullscreen Requested, Try Changing Video Modes
 	{
-		if (ChangeScreenResolution (window->init.width, window->init.height, window->init.bitsPerPixel) == FALSE)
+		if (ChangeScreenResolution (window.init.width, window.init.height, window.init.bitsPerPixel) == FALSE)
 		{
 			// Fullscreen Mode Failed.  Run In Windowed Mode Instead
 			MessageBox (HWND_DESKTOP, L"Mode Switch Failed.\nRunning In Windowed Mode.", L"Error", MB_OK | MB_ICONEXCLAMATION);
-			window->init.isFullScreen = FALSE;							// Set isFullscreen To False (Windowed Mode)
+			window.init.isFullScreen = FALSE;							// Set isFullscreen To False (Windowed Mode)
 		}
 		else															// Otherwise (If Fullscreen Mode Was Successful)
 		{
@@ -324,7 +316,7 @@ BOOL CreateWindowGL (GL_Window* window)			// This Code Creates Our OpenGL Window
 	}
 
 	// Create The OpenGL Window
-	window->hWnd = CreateWindowEx (windowExtendedStyle,					// Extended Style
+	window.hWnd = CreateWindowEx (windowExtendedStyle,					// Extended Style
 								   szWindowClass,						// Class Name
 								   szTitle,					// Window Title
 								   windowStyle,							// Window Style
@@ -333,100 +325,100 @@ BOOL CreateWindowGL (GL_Window* window)			// This Code Creates Our OpenGL Window
 								   windowRect.bottom - windowRect.top,	// Window Height
 								   HWND_DESKTOP,						// Desktop Is Window's Parent
 								   0,									// No Menu
-								   *window->init.application->hInstance, // Pass The Window Instance
-								   window);
+								   *window.init.application->hInstance, // Pass The Window Instance
+								   &window);
 
-	if (window->hWnd == 0)												// Was Window Creation A Success?
+	if (window.hWnd == 0)												// Was Window Creation A Success?
 	{
 		return FALSE;													// If Not Return False
 	}
 
-	window->hDC = GetDC (window->hWnd);									// Grab A Device Context For This Window
-	if (window->hDC == 0)												// Did We Get A Device Context?
+	window.hDC = GetDC (window.hWnd);									// Grab A Device Context For This Window
+	if (window.hDC == 0)												// Did We Get A Device Context?
 	{
 		// Failed
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 		return FALSE;													// Return False
 	}
 
-	PixelFormat = ChoosePixelFormat (window->hDC, &pfd);				// Find A Compatible Pixel Format
+	PixelFormat = ChoosePixelFormat (window.hDC, &pfd);				// Find A Compatible Pixel Format
 	if (PixelFormat == 0)												// Did We Find A Compatible Format?
 	{
 		// Failed
-		ReleaseDC (window->hWnd, window->hDC);							// Release Our Device Context
-		window->hDC = 0;												// Zero The Device Context
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		ReleaseDC (window.hWnd, window.hDC);							// Release Our Device Context
+		window.hDC = 0;												// Zero The Device Context
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 		return FALSE;													// Return False
 	}
 
-	if (SetPixelFormat (window->hDC, PixelFormat, &pfd) == FALSE)		// Try To Set The Pixel Format
+	if (SetPixelFormat (window.hDC, PixelFormat, &pfd) == FALSE)		// Try To Set The Pixel Format
 	{
 		// Failed
-		ReleaseDC (window->hWnd, window->hDC);							// Release Our Device Context
-		window->hDC = 0;												// Zero The Device Context
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		ReleaseDC (window.hWnd, window.hDC);							// Release Our Device Context
+		window.hDC = 0;												// Zero The Device Context
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 		return FALSE;													// Return False
 	}
 
-	window->hRC = wglCreateContext (window->hDC);						// Try To Get A Rendering Context
-	if (window->hRC == 0)												// Did We Get A Rendering Context?
+	window.hRC = wglCreateContext (window.hDC);						// Try To Get A Rendering Context
+	if (window.hRC == 0)												// Did We Get A Rendering Context?
 	{
 		// Failed
-		ReleaseDC (window->hWnd, window->hDC);							// Release Our Device Context
-		window->hDC = 0;												// Zero The Device Context
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		ReleaseDC (window.hWnd, window.hDC);							// Release Our Device Context
+		window.hDC = 0;												// Zero The Device Context
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 		return FALSE;													// Return False
 	}
 
 	// Make The Rendering Context Our Current Rendering Context
-	if (wglMakeCurrent (window->hDC, window->hRC) == FALSE)
+	if (wglMakeCurrent (window.hDC, window.hRC) == FALSE)
 	{
 		// Failed
-		wglDeleteContext (window->hRC);									// Delete The Rendering Context
-		window->hRC = 0;												// Zero The Rendering Context
-		ReleaseDC (window->hWnd, window->hDC);							// Release Our Device Context
-		window->hDC = 0;												// Zero The Device Context
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		wglDeleteContext (window.hRC);									// Delete The Rendering Context
+		window.hRC = 0;												// Zero The Rendering Context
+		ReleaseDC (window.hWnd, window.hDC);							// Release Our Device Context
+		window.hDC = 0;												// Zero The Device Context
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 		return FALSE;													// Return False
 	}
 
-	ShowWindow (window->hWnd, SW_NORMAL);								// Make The Window Visible
-	window->isVisible = TRUE;											// Set isVisible To True
+	ShowWindow (window.hWnd, SW_NORMAL);								// Make The Window Visible
+	window.isVisible = TRUE;											// Set isVisible To True
 
-	ReshapeGL (window->init.width, window->init.height);				// Reshape Our GL Window
+	ReshapeGL (window.init.width, window.init.height);				// Reshape Our GL Window
 
-	window->lastTickCount = GetTickCount ();							// Get Tick Count
+	window.lastTickCount = GetTickCount ();							// Get Tick Count
 
 	return TRUE;														// Window Creating Was A Success
 																		// Initialization Will Be Done In WM_CREATE
 }
 
-BOOL DestroyWindowGL (GL_Window* window)								// Destroy The OpenGL Window & Release Resources
+BOOL DestroyWindowGL ()								// Destroy The OpenGL Window & Release Resources
 {
-	if (window->hWnd != 0)												// Does The Window Have A Handle?
+	if (window.hWnd != 0)												// Does The Window Have A Handle?
 	{	
-		if (window->hDC != 0)											// Does The Window Have A Device Context?
+		if (window.hDC != 0)											// Does The Window Have A Device Context?
 		{
-			wglMakeCurrent (window->hDC, 0);							// Set The Current Active Rendering Context To Zero
-			if (window->hRC != 0)										// Does The Window Have A Rendering Context?
+			wglMakeCurrent (window.hDC, 0);							// Set The Current Active Rendering Context To Zero
+			if (window.hRC != 0)										// Does The Window Have A Rendering Context?
 			{
-				wglDeleteContext (window->hRC);							// Release The Rendering Context
-				window->hRC = 0;										// Zero The Rendering Context
+				wglDeleteContext (window.hRC);							// Release The Rendering Context
+				window.hRC = 0;										// Zero The Rendering Context
 
 			}
-			ReleaseDC (window->hWnd, window->hDC);						// Release The Device Context
-			window->hDC = 0;											// Zero The Device Context
+			ReleaseDC (window.hWnd, window.hDC);						// Release The Device Context
+			window.hDC = 0;											// Zero The Device Context
 		}
-		DestroyWindow (window->hWnd);									// Destroy The Window
-		window->hWnd = 0;												// Zero The Window Handle
+		DestroyWindow (window.hWnd);									// Destroy The Window
+		window.hWnd = 0;												// Zero The Window Handle
 	}
 
-	if (window->init.isFullScreen)										// Is Window In Fullscreen Mode
+	if (window.init.isFullScreen)										// Is Window In Fullscreen Mode
 	{
 		ChangeDisplaySettings (NULL,0);									// Switch Back To Desktop Resolution
 	}
@@ -463,7 +455,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return 0;														// Return
 
 		case WM_CLOSE:													// Closing The Window
-			TerminateApplication(window);								// Terminate The Application
+			TerminateApplication();								// Terminate The Application
 		return 0;														// Return
 
 		case WM_SIZE:													// Size Action Has Taken Place
@@ -485,13 +477,13 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 		break;															// Break
 
-		case WM_KEYDOWN:												// Update Keyboard Buffers For Keys Pressed
-			glRender->keys[wParam] = TRUE;					// Set The Selected Key (wParam) To True
+		case WM_KEYDOWN:												// Update Keyboard Buffers For Pressed
+			keys[wParam] = TRUE;					// Set The Selected Key (wParam) To True
 			
 		break;															// Break
 
 		case WM_KEYUP:													// Update Keyboard Buffers For Keys Released
-			glRender->keys[wParam] = FALSE;					// Set The Selected Key (wParam) To False
+			keys[wParam] = FALSE;					// Set The Selected Key (wParam) To False
 			
 		break;															// Break
 
@@ -503,9 +495,9 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_MOUSEWHEEL:
 			newMouseX = wParam;
 				if(newMouseX>0)
-					camera->zoom(-1, timeElapsed);
+					camera->zoom(-1);
 				else
-					camera->zoom(1, timeElapsed);
+					camera->zoom(1);
 			break;
 
 		case WM_RBUTTONDOWN:
@@ -568,27 +560,10 @@ void lMouseSelection()
 	if(actorManager->checkHitBoxes(selectedID, clickRay1, clickRay2))
 	{
 		setVector(glRender->target, NULL,NULL,NULL);
-		actorManager->getActorByID(selectedID)->setSelected(true);
-		//return;				//No need to continue dealing with selection handling
+		Actor *actor = actorManager->getActorByID(selectedID);
+		if(!gameManager->isSelectable(actor))
+			clearCurrentSelection();
 	}
-	/*else
-	{
-		selectedID = -1;
-	}
-	if(selectedID != -1)
-	{
-		testBox[selectedID]->unselect();
-		selectedID = -1;
-	}
-
-	for(int i = 0; i < 2; i++)
-		if(testBox[i]->checkHitBox(clickRay1, clickRay2))
-		{
-			selectedID = testBox[i]->getID();
-			setVector(target, -1,-1,-1);
-			return;				//No need to continue dealing with selection handling
-		}*/
-	
 }
 
 void rMouseSelection()
@@ -689,43 +664,11 @@ void rMouseSelection()
 			{
 				if(y+step < 0 || y+step > MAX_WORLD_SIZE-1)
 					continue;
-				//if(reverse)
-				//{
-				//	setVector(tp1, y, *actorManager->world->getTerrainHeight(y, x+step), x+step);
-				//	setVector(tp2, y + 1, *actorManager->world->getTerrainHeight(y+1, x+step), x+step);
-				//	setVector(tp3, y + 1, *actorManager->world->getTerrainHeight(y+1, x+step+1), x+step+1);
-				//	setVector(tp4, y, *actorManager->world->getTerrainHeight(y, x+step+1), x+step+1);
-				//}
-				//else
-				//{
-					setVector(tp1, y+step, terrainManager->root->world->getTerrainHeight(y+step, x), x);
-					setVector(tp2, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x), x);
-					setVector(tp3, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x+1), x+1);
-					setVector(tp4, y+step, terrainManager->root->world->getTerrainHeight(y+step, x+1), x+1);
-				//}
-				
-					/*glColor3f(1,1,1);
-					glBegin(GL_LINES);
-						glVertex3f(tp1.x, tp1.y, tp1.z);
-						glVertex3f(tp2.x, tp2.y, tp2.z);
-						
-						glVertex3f(tp2.x, tp2.y, tp2.z);
-						glVertex3f(tp3.x, tp3.y, tp3.z);
 
-						glVertex3f(tp3.x, tp3.y, tp3.z);
-						glVertex3f(tp4.x, tp4.y, tp4.z);
-
-						glVertex3f(tp4.x, tp4.y, tp4.z);
-						glVertex3f(tp1.x, tp1.y, tp1.z);
-					glEnd();*/
-				//}
-				//else
-				//{
-				//	setVector(tp1, y, *actorManager->world->getTerrainHeight(y+step, x), x+step);
-				//	setVector(tp2, y+1, *actorManager->world->getTerrainHeight(y+1, x+step), x+step);
-				//	setVector(tp3, y+1, *actorManager->world->getTerrainHeight(y+1, x+step+1), x+step+1);
-				//	setVector(tp4, y, *actorManager->world->getTerrainHeight(y, x+step+1), x+step+1);
-				//}
+				setVector(tp1, y+step, terrainManager->root->world->getTerrainHeight(y+step, x), x);
+				setVector(tp2, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x), x);
+				setVector(tp3, y+step+1, terrainManager->root->world->getTerrainHeight(y+step+1, x+1), x+1);
+				setVector(tp4, y+step, terrainManager->root->world->getTerrainHeight(y+step, x+1), x+1);
 
 
 				//Did the click ray pass through either triangle in the chunk plane?
@@ -752,35 +695,12 @@ void rMouseSelection()
 			{
 				if(x+step < 0 || x+step > MAX_WORLD_SIZE-1)
 					continue;
-				//if(!reverse)
-				//{
-				//	setVector(tp1, x+step, *actorManager->world->getTerrainHeight(x+step, y), y);
-				//	setVector(tp2, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y), y);
-				//	setVector(tp3, x+step + 1, *actorManager->world->getTerrainHeight(x+step+1, y+1), y+1);
-				//	setVector(tp4, x+step, *actorManager->world->getTerrainHeight(x+step, y+1), y+1);
-				//}
-				//else
-				//{
-					setVector(tp1, x, terrainManager->root->world->getTerrainHeight(x, y+step), y+step);
-					setVector(tp2, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step), y+step);
-					setVector(tp3, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step+1), y+step+1);
-					setVector(tp4, x, terrainManager->root->world->getTerrainHeight(x, y+step+1), y+step+1);
 
-					/*glColor3f(1,1,1);
-					glBegin(GL_LINES);
-						glVertex3f(tp1.x, tp1.y, tp1.z);
-						glVertex3f(tp2.x, tp2.y, tp2.z);
-						
-						glVertex3f(tp2.x, tp2.y, tp2.z);
-						glVertex3f(tp3.x, tp3.y, tp3.z);
+				setVector(tp1, x, terrainManager->root->world->getTerrainHeight(x, y+step), y+step);
+				setVector(tp2, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step), y+step);
+				setVector(tp3, x + 1, terrainManager->root->world->getTerrainHeight(x+1, y+step+1), y+step+1);
+				setVector(tp4, x, terrainManager->root->world->getTerrainHeight(x, y+step+1), y+step+1);
 
-						glVertex3f(tp3.x, tp3.y, tp3.z);
-						glVertex3f(tp4.x, tp4.y, tp4.z);
-
-						glVertex3f(tp4.x, tp4.y, tp4.z);
-						glVertex3f(tp1.x, tp1.y, tp1.z);
-					glEnd();*/
-				//}
 			
 				if(checkLineIntersect(tp2, tp1, tp3, clickRay1, clickRay2, target) || checkLineIntersect(tp4, tp3, tp1, clickRay1, clickRay2, target))
 				{
@@ -813,15 +733,6 @@ void rMouseSelection()
 		terrainManager->setMovePath(actorManager->getActorByID(selectedID), target);
 }
 
-void clearCurrentSelection()
-{
-	if(selectedID != -1)
-	{
-		actorManager->getActorByID(selectedID)->unselect();
-		selectedID = -1;
-	}
-}
-
 
 
 //
@@ -833,14 +744,14 @@ void clearCurrentSelection()
 //
 
 
-void buildFont(GL_Window* window)
+void buildFont(GLuint &fontSet, LPCWSTR fontName, int size)
 {
 	HFONT font;
 	HFONT oldfont;
 
 	fontSet = glGenLists(96);
 
-	font = CreateFont(-14,
+	font = CreateFont(-size,
 					  0,
 					  0,
 					  0,
@@ -853,10 +764,10 @@ void buildFont(GL_Window* window)
 					  CLIP_DEFAULT_PRECIS,
 					  NONANTIALIASED_QUALITY,
 					  FF_DECORATIVE|DEFAULT_PITCH,
-					  L"Courier New");
-
-	oldfont = (HFONT)SelectObject(window->hDC, font);
-	wglUseFontBitmaps(window->hDC, 32, 96, fontSet);
+					  fontName);
+	
+	oldfont = (HFONT)SelectObject(window.hDC, font);
+	wglUseFontBitmaps(window.hDC, 32, 96, fontSet);
 }
 
 

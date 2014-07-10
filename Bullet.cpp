@@ -8,16 +8,19 @@ Bullet::Bullet(Vector3 &position, Vector3 &direction2)
 	setVector(initialLocation, position.x, position.y, position.z);
 	log("Bullet shot at x:"+dtos(location.x)+" y:"+dtos(location.y)+" z:"+dtos(location.z)+"\n");
 	dead = false;
-	velocity = 30;		//Units per second
+	visible = true;
+	maxVisionDistance = 0;
+	velocity = 50;		//Units per second
 
 	//Facing vector with a bit of randomness
-	setVector(facing, direction2.x+(getRandomAsD(20)-10)/400.0, direction2.y+(getRandomAsD(20)-10)/350.0, direction2.z+(getRandomAsD(20)-10)/400.0);
+	setVector(facing, direction2.x+(getRandomAsD(20)-10)/700.0, direction2.y+(getRandomAsD(20)-10)/550.0, direction2.z+(getRandomAsD(20)-10)/700.0);
 	normalize(facing);
 
 	setVector(initialFacing, facing.x*velocity, facing.y*velocity, facing.z*velocity);
 
 	lifeTime = 0;
 	totalLifeTime = 8000;
+	explosionRadius = 2;
 	
 }
 
@@ -29,7 +32,7 @@ Bullet::Bullet(Vector3 &position, Vector3 &direction2)
 //  COMMENTS: 
 //
 
-void Bullet::update(int timeElapsed, double height)
+void Bullet::update(int timeElapsed, double height, tile tileData)
 {
 	//Check if the bullet's lifetime is over
 	checkLifeTime(timeElapsed);
@@ -53,6 +56,11 @@ void Bullet::update(int timeElapsed, double height)
 	}
 }
 
+double Bullet::getExplosionRadius()
+{
+	return explosionRadius;
+}
+
 void Bullet::draw()
 {
 	glColor3f(1,1,1);
@@ -61,6 +69,11 @@ void Bullet::draw()
 		glVertex3f(location.x, location.y, location.z);
 	glEnd();
 	glLoadIdentity();
+}
+
+void Bullet::updateOverlay(int timeElapsed)
+{
+
 }
 
 //Kills the bullet on next update

@@ -5,6 +5,12 @@
 #include "stdafx.h"
 #include <sstream>
 
+
+void clearCurrentSelection()
+{
+	selectedID = -1;
+}
+
 void log(string * text)
 {
 	// This function takes in a string pointer and prints that string to log.txt
@@ -47,6 +53,7 @@ string itos(int number)
 
 double getDecimalRandom(int randBound)
 {
+	//Returns a random decimal between 0 and randBound
 	return (rand() % (randBound*100))/100.0;
 }
 
@@ -130,6 +137,14 @@ void normalize(Vector3 &v)
 	v.z = v.z / length;
 }
 
+void setVector(Vector4 &v, double x, double y, double z, double a)
+{
+	v.x = x;
+	v.y = y;
+	v.z = z;
+	v.a = a;
+}
+
 void setVector(Vector3 &v, double x, double y, double z)
 {
 	v.x = x;
@@ -187,23 +202,45 @@ BOOL checkLineIntersect(Vector3 tp1, Vector3 tp2, Vector3 tp3, Vector3 lp1, Vect
 	setVector(intersectPos, n1.x, n1.y, n1.z);
 
 	//Find if the intersection point lies within all bounds of the triangle
-	Vector3 vTest;
+	/*Vector3 vTest;
 	setVector(n1, tp2.x-tp1.x, tp2.y-tp1.y, tp2.z-tp1.z);
 	vTest = crossProduct(normal, n1);
 	setVector(n1, intersectPos.x-tp1.x, intersectPos.y-tp1.y, intersectPos.z-tp1.z);
-	if(dotProduct(vTest, n1) < 0) return FALSE;
+	double dp = dotProduct(vTest, n1);
+	if(dp < 0) return FALSE;
 
 	setVector(n1, tp3.x-tp2.x, tp3.y-tp2.y, tp3.z-tp2.z);
 	vTest = crossProduct(normal, n1);
 	setVector(n1, intersectPos.x-tp2.x, intersectPos.y-tp2.y, intersectPos.z-tp2.z);
-	if(dotProduct(vTest, n1) < 0) return FALSE;
+	dp = dotProduct(vTest, n1);
+	if(dp < 0) return FALSE;
 
 	setVector(n1, tp1.x-tp3.x, tp1.y-tp3.y, tp1.z-tp3.z);
 	vTest = crossProduct(normal, n1);
-	setVector(n1, intersectPos.x-tp1.x, intersectPos.y-tp1.y, intersectPos.z-tp1.z);
-	if(dotProduct(vTest, n1) < 0) return FALSE;
+	setVector(n1, intersectPos.x-tp3.x, intersectPos.y-tp3.y, intersectPos.z-tp3.z);
+	dp = dotProduct(vTest, n1);
+	if(dp < 0) return FALSE;*/
 
-	intersect =  intersectPos;
+	Vector3 vTest;
+	setVector(n1, tp2.x-tp1.x, tp2.y-tp1.y, tp2.z-tp1.z);
+	setVector(n2, intersectPos.x-tp1.x, intersectPos.y-tp1.y, intersectPos.z-tp1.z);
+	vTest = crossProduct(n1, n2);
+	float dp = ceilf(dotProduct(vTest, normal)*1000)/1000; //Round to nearest 4 decimals to avoid computation errors
+	if(dp < 0) return FALSE;
+
+	setVector(n1, tp3.x-tp2.x, tp3.y-tp2.y, tp3.z-tp2.z);
+	setVector(n2, intersectPos.x-tp2.x, intersectPos.y-tp2.y, intersectPos.z-tp2.z);
+	vTest = crossProduct(n1, n2);
+	dp = ceilf(dotProduct(vTest, normal)*1000)/1000; //Round to nearest 4 decimals to avoid computation errors
+	if(dp < 0) return FALSE;
+
+	setVector(n1, tp1.x-tp3.x, tp1.y-tp3.y, tp1.z-tp3.z);
+	setVector(n2, intersectPos.x-tp3.x, intersectPos.y-tp3.y, intersectPos.z-tp3.z);
+	vTest = crossProduct(n1, n2);
+	dp = ceilf(dotProduct(vTest, normal)*1000)/1000; //Round to nearest 4 decimals to avoid computation errors
+	if(dp < 0) return FALSE;
+
+	intersect = intersectPos;
 
 	return TRUE;
 }
